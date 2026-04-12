@@ -1,0 +1,181 @@
+     HSP-Flow — PayFi MVP for HashKey On-Chain Horizon Hackathon
+
+     Context
+
+     Event: HashKey Chain "On-Chain Horizon Hackathon" — PayFi track. Prize: 5k / 3k / 2k USDT for 1st / 2nd / 3rd. Submission deadline Apr 15, 23:59 GMT+8 (~3.5 days from Apr 12). Developer: solo,
+     Solidity/EVM strong, new to HashKey Chain specifics.
+
+     Constraint: PayFi track requires using HSP. HSP is HashKey's merchant payment gateway (Stripe-for-on-chain-stablecoins) — REST API that issues checkout URLs, collects EIP-3009/Permit2 signatures from
+     buyers, broadcasts on-chain USDC/USDT transfers, and fires HMAC-signed webhooks. Source of truth: /mnt/c/Users/User/Desktop/hashkey/merchant-docs-all-in-one.pdf.
+
+     Problem it solves: HSP gives T+0 stablecoin checkout but the funds sit idle at the merchant's wallet during the 14–30 day refund/dispute window. In aggregate, that's unproductive float — a PayFi-shaped
+     opportunity. No existing tool parks that float in yield while still honoring refund claims.
+
+     Intended outcome: An on-chain escrow+router that sits between HSP and the merchant's final recipients. Same T+0 buyer UX, but during the refund window the principal earns yield in a vault, and at
+     settlement principal + yield are split across a pre-configured recipient list (team, platform fee, buyer loyalty rebate). Ship a complete MVP with a real HSP integration, live on HashKey Chain testnet
+     (chain 133), with a <3 minute demo video.
+
+     Pitch: "The refund window earns instead of costs. HSP-Flow is the missing middleware between stablecoin payment rails and DeFi yield."
+
+     ---
+     Recommended approach: "HSP-Flow"
+
+     End-to-end flow
+
+     1. Merchant deploys EscrowRouter + MockYieldVault once.
+     2. Merchant calls EscrowRouter.createSplitRule(id, recipients[], bps[]) once per rule (e.g. 70% merchant / 20% platform / 10% buyer rebate).
+     3. At checkout: backend calls EscrowRouter.registerMandate(mandateId, buyer, amount, splitRuleId, refundWindow) then POST /api/v1/merchant/orders to HSP with pay_to = EscrowRouter.address and
+     cart_mandate_id matching.
+     4. Buyer opens payment_url, signs EIP-3009 in wallet, HSP broadcasts on-chain transfer to EscrowRouter.
+     5. HSP fires webhook. Backend verifies HMAC on raw request body (not parsed JSON). On payment-included or payment-successful, backend (as SETTLER_ROLE) calls EscrowRouter.confirmDeposit(mandateId) →
+     contract moves the expected amount into MockYieldVault, records depositedAt.
+     6. Anytime before depositedAt + refundWindow: buyer can call refund(mandateId) → principal returns to buyer; accrued yield stays in the vault and flows to merchant at next settle (or to a rebate pool).
+     7. After the window: anyone calls settle(mandateId) → vault redeems principal + yield → push-based split across the rule's recipients. Gas-capped at 10 recipients. Last recipient absorbs dust.
+
+     PayFi primitives stacked
+
+     1. Per-payment routing (not per-pool) with invoice metadata binding (cart_mandate_id)
+     2. Yield-bearing escrow during refund window = capital efficiency
+     3. Programmable split (BNPL-style loyalty rebate as a first-class recipient)
+     4. Clean vault interface → real Aave/Morpho-style vault drops in as v2
+
+     Tech stack
+
+     - Contracts: Solidity 0.8.24, Foundry (faster iteration than Hardhat), OpenZeppelin (SafeERC20, ReentrancyGuard, AccessControl). MockYieldVault either hand-rolled linear-accrual or ERC-4626 — whichever
+     ships faster.
+     - App: Next.js 14 (App Router, TypeScript). Single repo, single Vercel deploy.
+     - Wallet/RPC: wagmi + viem + RainbowKit. HashKey Chain testnet (chain 133).
+     - HSP client: lib/hsp/client.ts — HMAC-SHA256 request signer, ES256K JWT builder (jose lib, fallback @noble/curves/secp256k1), RFC 8785 canonical JSON via canonicalize npm. Must support a
+     HSP_MODE=mock|real env switch (see mock shim below).
+     - Storage: No database. Mandate state lives on-chain; frontend reads via viem. Optional data/mandates.json for local dev.
+
+     Contract surface (single file: EscrowRouter.sol)
+
+     struct SplitRule { address[] recipients; uint16[] bps; }   // sum == 10000
+     enum Status { None, Registered, Confirmed, Refunded, Settled }
+     struct Mandate {
+       address buyer;
+       uint256 amount;          // expected USDC smallest units
+       bytes32 splitRuleId;
+       uint64  refundWindow;    // seconds
+       uint64  depositedAt;
+       uint256 shares;          // from MockYieldVault
+       Status  status;
+     }
+     mapping(bytes32 => SplitRule) public splitRules;
+     mapping(bytes32 => Mandate)   public mandates;   // key = keccak256(cart_mandate_id)
+     IERC20       public immutable USDC;
+     IYieldVault  public immutable vault;
+     bytes32      public constant SETTLER_ROLE = keccak256("SETTLER_ROLE");
+
+     function createSplitRule(bytes32 id, address[] calldata recipients, uint16[] calldata bps) external;
+     function registerMandate(bytes32 id, address buyer, uint256 amount, bytes32 ruleId, uint64 window) external onlyRole(SETTLER_ROLE);
+     function confirmDeposit(bytes32 id) external onlyRole(SETTLER_ROLE) nonReentrant;   // deposits amount into vault
+     function refund(bytes32 id) external nonReentrant;                                   // buyer only, before window end
+     function settle(bytes32 id) external nonReentrant;                                   // anyone, after window end
+     function sweepUnattributed(address to) external onlyRole(DEFAULT_ADMIN_ROLE);        // rescues stray USDC
+
+     MockYieldVault: deposit(amount) -> shares, redeem(shares) -> amount+yield, linear yieldPerSecond accrual. Demo-time yield rate set to 1000% APY so yield is visible within a 2-minute demo window. Pre-fund
+     reserve address with USDC from faucet so redemption actually pays out the bonus.
+
+     Showstopper guardrails (from plan review — do these correctly first try)
+
+     1. Dual canonicalization: HMAC bodyHash = SHA256(canonicalJSON(body)). JWT cart_hash = SHA256(canonicalJSON(cart_mandate.contents)). These are different canonicalizations on different objects. Lock them
+     in with fixture tests against hand-computed hashes before wiring anything.
+     2. Webhook raw body: in Next.js App Router, await req.text() BEFORE JSON.parse. HMAC verification uses bytes, not the parsed object. The signature format is X-Signature: t=<unix>,v1=<hex> and the signed
+     message is t + "." + rawBody.
+     3. Demo timing: trigger confirmDeposit on payment-included (not payment-successful — that's 20–60 min later). Handle duplicate payment-successful webhook idempotently (no-op if already confirmed). Index
+     idempotency by request_id (ID5).
+     4. ES256K PEM on Vercel: base64-encode the private key into one env var, decode at runtime. Literal newlines in env vars break jose.importPKCS8.
+     5. Nonces: crypto.randomUUID() per request. Timestamps within ±300s.
+     6. One-time orders only, not reusable — each payment must bind 1:1 to a mandate row.
+
+     Mock HSP shim (build Day 0, regardless of creds)
+
+     app/api/_mock-hsp/orders/route.ts mirrors real HSP response shape → app/mock-checkout/[flowId]/page.tsx prompts wagmi wallet to do a real USDC.transferWithAuthorization to EscrowRouter → on tx
+     confirmation, fires a self-POST to /api/webhooks/hsp with the exact HSP payload (HMAC-signed with a dummy secret). Everything downstream (webhook handler → contract → settle) runs for real on chain 133.
+     Flipping HSP_MODE=real swaps in the production HSP client with zero other code changes. This shim is also the automated E2E test fixture and the insurance policy if hsp_hackathon@hashkey.com is slow.
+
+     Demo script (hard-codes called out explicitly)
+
+     Pre-seed: one product ("Yield Coffee — 10 USDC"), one pre-registered split rule (70/20/10), refund window = 120 seconds (not 14 days), vault yield 1000% APY (not 10%).
+
+     1. 0:00–0:20 problem slide
+     2. 0:20–0:35 merchant dashboard → "Create Order"
+     3. 0:35–1:10 redirect to HSP checkout → sign → back to receipt page
+     4. 1:10–1:40 receipt: "Deposited in vault" + live countdown + yield ticker incrementing
+     5. 1:40–2:10 countdown hits 0 → click "Settle" → block explorer shows 3 outbound Transfer logs
+     6. 2:10–2:40 architecture diagram + "MockVault → real 4626 in 1 line"
+     7. 2:40–3:00 PayFi pitch close
+
+     Time budget (realistic, with buffers)
+
+     - Day 0 — Apr 12 PM (half-day): Email hsp_hackathon@hashkey.com first thing (unblock credential latency). Scaffold Next.js + Foundry. Faucet HSK from https://hashkeychain.net/faucet. Faucet testnet USDC.
+     Write + fixture-test lib/hsp/client.ts (HMAC + JWT + canonical JSON). Build mock HSP shim. Test both HMAC and JWT against hardcoded fixtures before Day 1.
+     - Day 1 — Apr 13: Write EscrowRouter.sol + MockYieldVault.sol + 6 happy-path Foundry tests (register rule / register mandate / confirm / accrue / refund / settle). Deploy to chain 133. Wire
+     /api/webhooks/hsp and /api/checkout end-to-end via mock shim.
+     - Day 2 — Apr 14: Merchant dashboard (minimal: show rule, create order button, mandate list). Buyer checkout page. Receipt page with live countdown + yield ticker. Full E2E against real HSP if creds have
+     arrived; otherwise mock shim. Swap to real HSP env once creds land.
+     - Day 3 — Apr 15: Record demo video by 12:00. Write README + pitch deck (5 slides). DoraHacks submission by 17:00 (not 23:59 — leave 6h buffer). Submit.
+
+     Explicit scope cuts (do NOT build these even if there is time)
+
+     - Merchant auth / login / multi-tenant / Prisma / Postgres
+     - Multi-chain, multi-token (USDT/Permit2), cross-chain bridges
+     - Polished refund UI (refund logic in contract is mandatory; UI can be a single button or cast call)
+     - Unit test coverage beyond happy paths
+     - On-chain verification of webhook tx_signature (trusted SETTLER is fine for v1; note as stretch)
+     - Mobile app, KYC, fiat on/off-ramp
+
+     ---
+     Critical files
+
+     To read (source of truth)
+
+     - /mnt/c/Users/User/Desktop/hashkey/merchant-docs-all-in-one.pdf — re-read when implementing canonical JSON, HMAC signing, JWT cart_hash, and webhook verification.
+
+     To create
+
+     - contracts/src/EscrowRouter.sol — mandate registry + split rules + confirmDeposit/refund/settle + SETTLER_ROLE
+     - contracts/src/MockYieldVault.sol — linear-accrual yield vault with clean IYieldVault interface
+     - contracts/test/EscrowRouter.t.sol — 6 happy-path Foundry tests
+     - contracts/script/Deploy.s.sol — one-shot deployer
+     - lib/hsp/client.ts — HMAC request signer + ES256K JWT + RFC 8785 canonical JSON + HSP_MODE switch
+     - lib/hsp/canonical.ts — isolated canonical JSON helper with fixture tests
+     - lib/chain/viem.ts — viem client for chain 133, contract ABIs
+     - app/api/checkout/route.ts — POST: creates mandate on-chain, creates HSP order, returns payment_url
+     - app/api/webhooks/hsp/route.ts — POST: raw-body HMAC verify → confirmDeposit (idempotent on request_id)
+     - app/api/_mock-hsp/orders/route.ts — mock HSP order creator
+     - app/mock-checkout/[flowId]/page.tsx — mock HSP checkout page (real wagmi signing)
+     - app/merchant/page.tsx — dashboard: rules, products, mandate list
+     - app/checkout/[productId]/page.tsx — buyer page with "Pay with HSP" button
+     - app/receipt/[mandateId]/page.tsx — post-payment: locked amount, refund countdown, yield ticker, settle button
+     - data/products.json — hard-coded product seed (one item)
+     - .env.example — HSP_MODE, HSP_APP_KEY, HSP_APP_SECRET, HSP_MERCHANT_PRIVATE_KEY_B64, NEXT_PUBLIC_CHAIN_ID=133, ESCROW_ROUTER_ADDRESS, VAULT_ADDRESS
+     - README.md — problem, demo GIF, architecture diagram, setup, env vars
+     - pitch/slides.pdf — 5 slides for DoraHacks submission
+
+     ---
+     Verification
+
+     Contract level (Foundry)
+     - forge test — all 6 happy-path tests pass: createSplitRule, registerMandate, confirmDeposit (funds land in vault), yield accrual over time, refund before window (principal returned, yield stays), settle
+     after window (recipients receive correct bps of principal+yield).
+
+     HSP client level (vitest or similar)
+     - Fixture test: HMAC signature over a hand-computed canonical-JSON body matches a hand-computed expected hex.
+     - Fixture test: JWT cart_hash over canonical cart_mandate.contents matches hand-computed hex.
+     - Webhook verification round-trip: given a known secret + raw body + t, verify matches v1.
+
+     Integration (mock-HSP path, Day 1 EOD)
+     - Run Next.js dev server + anvil fork of chain 133.
+     - Hit /checkout/yield-coffee → mock checkout → sign → webhook → receipt page shows "Deposited."
+     - Wait 120s → click Settle → three Transfer logs on explorer → mandate status = Settled.
+
+     Integration (real-HSP path, Day 2 EOD)
+     - Flip HSP_MODE=real, point at https://merchant-qa.hashkeymerchant.com, use real app_key / app_secret / merchant key.
+     - Same sequence with a real testnet wallet. Confirm on-chain tx at chain 133 explorer matches tx_signature from webhook.
+
+     Submission
+     - Video recorded + uploaded (YouTube unlisted or Vimeo).
+     - DoraHacks BUIDL page: description, tracks (PayFi), demo video link, GitHub repo link, testnet contract addresses, team info — submitted before 17:00 Apr 15 GMT+8.

@@ -1,0 +1,20 @@
+[
+    {
+        "name": "ETHDam",
+        "date": "May 9-11, 2025",
+        "description": "Semaphore team will deliver an in-person talk.",
+        "link": "https://www.ethdam.com/"
+    },
+    {
+        "name": "ZuBerlin",
+        "date": "June 14-22, 2025",
+        "description": "Semaphore team will deliver an in-person talk.",
+        "link": "https://zuberlin.city/"
+    },
+    {
+        "name": "Devconnect",
+        "date": "Nov 17-22, 2025",
+        "description": "Semaphore team will deliver an in-person talk and run workshops.",
+        "link": "https://devconnect.org/"
+    }
+]
