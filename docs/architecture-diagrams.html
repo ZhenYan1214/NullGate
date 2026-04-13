@@ -6,350 +6,246 @@
 <title>ZK-RWA Allowlist — Architecture Diagrams</title>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0d1117;color:#f0f6fc;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;padding:56px 56px 80px;line-height:1.5}
+  .doc-title{font-size:22px;font-weight:700;letter-spacing:-.02em;margin-bottom:6px}
+  .doc-sub{font-size:12px;color:#7d8590;margin-bottom:64px}
+  .section{margin-bottom:80px}
+  .section-num{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#388bfd;margin-bottom:8px}
+  .section-title{font-size:17px;font-weight:700;letter-spacing:-.01em;margin-bottom:6px}
+  .section-desc{font-size:12px;color:#7d8590;max-width:700px;line-height:1.7;margin-bottom:28px}
+  .diagram-wrap{background:#161b22;border:1px solid #30363d;border-radius:10px;padding:40px;overflow-x:auto}
 
-  body {
-    background: #0d1117;
-    color: #f0f6fc;
-    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-    padding: 56px 56px 80px;
-    line-height: 1.5;
-  }
+  /* privacy model */
+  .privacy-grid{display:grid;grid-template-columns:1fr 200px 1fr;gap:24px;align-items:start}
+  .priv-side-label{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid}
+  .priv-side-label.priv{color:#2ea043;border-color:#2ea04340}
+  .priv-side-label.pub{color:#388bfd;border-color:#388bfd40}
+  .priv-item{padding:12px 14px;border-radius:6px;margin-bottom:10px;border:1px solid}
+  .priv-item.priv-bg{background:#0d1f0f;border-color:#2ea04325}
+  .priv-item.pub-bg{background:#0c1628;border-color:#1f6feb25}
+  .priv-item-name{font-size:12px;font-weight:600;color:#f0f6fc;margin-bottom:4px}
+  .priv-item-note{font-size:11px;color:#7d8590;line-height:1.55}
+  .bridge-box{background:#120f26;border:1px solid #6e40c940;border-radius:8px;padding:24px 18px;text-align:center}
+  .bridge-title{font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8b5cf6;margin-bottom:16px}
+  .bridge-step{font-size:11px;color:#8b949e;margin-bottom:10px;line-height:1.55}
+  .bridge-arrow{color:#6e40c9;font-size:18px;margin:8px 0}
+  .unknowable-box{margin-top:28px;padding:16px 18px;background:#1c0f0f;border:1px solid #da363330;border-radius:6px}
+  .unknowable-box .title{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#f85149;margin-bottom:10px}
+  .unknowable-box .item{font-size:11px;color:#7d8590;margin-bottom:6px}
 
-  .doc-title  { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; color: #f0f6fc; margin-bottom: 6px; }
-  .doc-sub    { font-size: 12px; color: #7d8590; margin-bottom: 64px; }
-
-  .section         { margin-bottom: 80px; }
-  .section-num     { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #388bfd; margin-bottom: 8px; }
-  .section-title   { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; color: #f0f6fc; margin-bottom: 6px; }
-  .section-desc    { font-size: 12px; color: #7d8590; max-width: 680px; line-height: 1.7; margin-bottom: 28px; }
-
-  .diagram-wrap {
-    background: #161b22;
-    border: 1px solid #30363d;
-    border-radius: 10px;
-    padding: 40px;
-    overflow-x: auto;
-  }
-
-  /* ── Privacy model grid ───────────────────────────── */
-  .privacy-grid {
-    display: grid;
-    grid-template-columns: 1fr 220px 1fr;
-    gap: 24px;
-    align-items: start;
-  }
-
-  .priv-side-label {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    margin-bottom: 14px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid;
-  }
-  .priv-side-label.priv  { color: #2ea043; border-color: #2ea04340; }
-  .priv-side-label.pub   { color: #388bfd; border-color: #388bfd40; }
-
-  .priv-item {
-    padding: 12px 14px;
-    border-radius: 6px;
-    margin-bottom: 10px;
-    border: 1px solid;
-  }
-  .priv-item.priv-bg { background: #0d1f0f; border-color: #2ea04325; }
-  .priv-item.pub-bg  { background: #0c1628; border-color: #1f6feb25; }
-
-  .priv-item-name { font-size: 12px; font-weight: 600; color: #f0f6fc; margin-bottom: 4px; }
-  .priv-item-note { font-size: 11px; color: #7d8590; line-height: 1.55; }
-
-  .bridge-box {
-    background: #120f26;
-    border: 1px solid #6e40c940;
-    border-radius: 8px;
-    padding: 24px 18px;
-    text-align: center;
-  }
-  .bridge-title {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: #8b5cf6;
-    margin-bottom: 16px;
-  }
-  .bridge-step {
-    font-size: 11px;
-    color: #8b949e;
-    margin-bottom: 10px;
-    line-height: 1.55;
-  }
-  .bridge-arrow {
-    color: #6e40c9;
-    font-size: 18px;
-    margin: 8px 0;
-  }
-
-  .unknowable-box {
-    margin-top: 28px;
-    padding: 16px 18px;
-    background: #1c0f0f;
-    border: 1px solid #da363330;
-    border-radius: 6px;
-  }
-  .unknowable-box .title { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #f85149; margin-bottom: 10px; }
-  .unknowable-box .item  { font-size: 11px; color: #7d8590; margin-bottom: 6px; }
-
-  @media print {
-    body { background: #fff; color: #111; padding: 28px; }
-    .diagram-wrap { background: #f6f8fa; border-color: #d0d7de; }
-    .section { page-break-after: always; margin-bottom: 0; }
-    .priv-item.priv-bg { background: #f0fff4; }
-    .priv-item.pub-bg  { background: #eff6ff; }
-    .bridge-box { background: #f5f0ff; }
-    .unknowable-box { background: #fff0f0; }
+  @media print{
+    body{background:#fff;color:#111;padding:28px}
+    .diagram-wrap{background:#f6f8fa;border-color:#d0d7de}
+    .section{page-break-after:always;margin-bottom:0}
   }
 </style>
 </head>
 <body>
 
 <p class="doc-title">ZK-RWA Allowlist — System Architecture</p>
-<p class="doc-sub">HashKey On-Chain Horizon Hackathon &nbsp;·&nbsp; ZKID Track &nbsp;·&nbsp; Semaphore v4 &nbsp;·&nbsp; HashKey Chain Testnet (Chain ID 133)</p>
+<p class="doc-sub">HashKey On-Chain Horizon Hackathon &middot; ZKID Track &middot; Semaphore v4 &middot; HashKey Chain Testnet (Chain ID 133)</p>
 
 
-<!-- ══════════════════════════════════════════════════════════ -->
-<!-- DIAGRAM 1 — System Architecture (hand-crafted SVG)        -->
-<!-- ══════════════════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- DIAGRAM 1 — System Architecture (SVG)                         -->
+<!-- ══════════════════════════════════════════════════════════════ -->
 <div class="section">
   <div class="section-num">Diagram 1 of 3</div>
   <div class="section-title">System Architecture Overview</div>
   <div class="section-desc">
-    All system components and their interactions. The issuer's KYC allowlist lives entirely off-chain;
-    only the Merkle root is published on-chain. Holders self-admit by submitting a ZK proof of group membership.
-    PrivateRWA enforces compliance on every transfer by querying ComplianceGate — no per-transfer proof is required.
+    All system components and data flow. The issuer's KYC allowlist is stored off-chain
+    in Upstash Redis (Vercel production) or a local JSON file (development).
+    Only the Merkle root is published on-chain. Holders self-admit via ZK proof.
+    PrivateRWA enforces compliance on every transfer by querying ComplianceGate.
   </div>
   <div class="diagram-wrap">
-    <svg viewBox="0 0 920 500" xmlns="http://www.w3.org/2000/svg"
-         style="width:100%;max-width:920px;display:block;margin:0 auto">
+    <svg viewBox="0 0 940 530" xmlns="http://www.w3.org/2000/svg"
+         style="width:100%;max-width:940px;display:block;margin:0 auto">
       <defs>
-        <!-- Default grey arrowhead -->
-        <marker id="arr" markerWidth="9" markerHeight="9" refX="8" refY="3.5" orient="auto">
-          <path d="M0,0.5 L0,6.5 L8,3.5 Z" fill="#7d8590"/>
-        </marker>
-        <!-- Green arrowhead (issuer actions) -->
-        <marker id="arr-g" markerWidth="9" markerHeight="9" refX="8" refY="3.5" orient="auto">
-          <path d="M0,0.5 L0,6.5 L8,3.5 Z" fill="#2ea043"/>
-        </marker>
-        <!-- Blue arrowhead (holder actions) -->
-        <marker id="arr-b" markerWidth="9" markerHeight="9" refX="8" refY="3.5" orient="auto">
-          <path d="M0,0.5 L0,6.5 L8,3.5 Z" fill="#388bfd"/>
-        </marker>
-        <!-- Purple arrowhead (internal / verification) -->
-        <marker id="arr-p" markerWidth="9" markerHeight="9" refX="8" refY="3.5" orient="auto">
-          <path d="M0,0.5 L0,6.5 L8,3.5 Z" fill="#6e40c9"/>
-        </marker>
-        <!-- Left-pointing grey -->
-        <marker id="arr-l" markerWidth="9" markerHeight="9" refX="1" refY="3.5" orient="auto">
-          <path d="M8,0.5 L8,6.5 L0,3.5 Z" fill="#7d8590"/>
-        </marker>
+        <marker id="ag" markerWidth="9" markerHeight="9" refX="8" refY="3.5" orient="auto"><path d="M0,.5 L0,6.5 L8,3.5Z" fill="#2ea043"/></marker>
+        <marker id="ab" markerWidth="9" markerHeight="9" refX="8" refY="3.5" orient="auto"><path d="M0,.5 L0,6.5 L8,3.5Z" fill="#388bfd"/></marker>
+        <marker id="ap" markerWidth="9" markerHeight="9" refX="8" refY="3.5" orient="auto"><path d="M0,.5 L0,6.5 L8,3.5Z" fill="#6e40c9"/></marker>
+        <marker id="ay" markerWidth="9" markerHeight="9" refX="8" refY="3.5" orient="auto"><path d="M0,.5 L0,6.5 L8,3.5Z" fill="#d29922"/></marker>
+        <marker id="ax" markerWidth="9" markerHeight="9" refX="8" refY="3.5" orient="auto"><path d="M0,.5 L0,6.5 L8,3.5Z" fill="#7d8590"/></marker>
+        <marker id="al" markerWidth="9" markerHeight="9" refX="1" refY="3.5" orient="auto"><path d="M8,.5 L8,6.5 L0,3.5Z" fill="#7d8590"/></marker>
       </defs>
 
-      <!-- ░ Background ░ -->
-      <rect width="920" height="500" fill="#161b22"/>
+      <rect width="940" height="530" fill="#161b22"/>
 
-      <!-- ─────────────────────────────────────────────────── -->
-      <!-- HashKey Chain outer box (dashed)                    -->
-      <!-- ─────────────────────────────────────────────────── -->
-      <rect x="288" y="34" width="420" height="446" rx="10"
-            fill="none" stroke="#1f6feb" stroke-width="1.2" stroke-dasharray="6 4" opacity="0.55"/>
-      <text x="498" y="26" text-anchor="middle"
-            fill="#388bfd" font-family="Segoe UI,sans-serif" font-size="10.5" font-weight="700" letter-spacing="1">
-        HASHKEY CHAIN TESTNET  ·  CHAIN ID 133
-      </text>
+      <!-- ── HashKey Chain outer (dashed) ── -->
+      <rect x="295" y="34" width="390" height="448" rx="10" fill="none" stroke="#1f6feb" stroke-width="1.2" stroke-dasharray="6 4" opacity=".5"/>
+      <text x="490" y="26" text-anchor="middle" fill="#388bfd" font-size="10.5" font-weight="700" letter-spacing="1" font-family="Segoe UI,sans-serif">HASHKEY CHAIN TESTNET · CHAIN ID 133</text>
 
-      <!-- ─────────────────────────────────────────────────── -->
-      <!-- Issuer Backend box                                  -->
-      <!-- ─────────────────────────────────────────────────── -->
-      <rect x="28" y="58" width="210" height="180" rx="8"
-            fill="#0d1f0f" stroke="#2ea043" stroke-width="1.4"/>
-      <!-- title bar -->
-      <rect x="28" y="58" width="210" height="38" rx="8" fill="#122a14"/>
-      <rect x="28" y="78" width="210" height="18" fill="#122a14"/>
-      <text x="133" y="82" text-anchor="middle"
-            fill="#56d364" font-family="Segoe UI,sans-serif" font-size="12.5" font-weight="700">Issuer Backend</text>
-      <text x="133" y="96" text-anchor="middle"
-            fill="#3fb95066" font-family="Segoe UI,sans-serif" font-size="10">Next.js API Routes</text>
-      <line x1="40" y1="104" x2="226" y2="104" stroke="#2ea04330" stroke-width="1"/>
-      <!-- bullets -->
-      <text x="46" y="124" fill="#8b949e" font-family="Segoe UI,sans-serif" font-size="11">Semaphore Group Store</text>
-      <text x="46" y="143" fill="#8b949e" font-family="Segoe UI,sans-serif" font-size="11">data/group.json (off-chain)</text>
-      <text x="46" y="162" fill="#8b949e" font-family="Segoe UI,sans-serif" font-size="11">Merkle root computation</text>
-      <text x="46" y="181" fill="#8b949e" font-family="Segoe UI,sans-serif" font-size="11">Issuer wallet (private key)</text>
-      <text x="46" y="200" fill="#8b949e" font-family="Segoe UI,sans-serif" font-size="11">POST /api/issuer/*</text>
-      <text x="46" y="219" fill="#8b949e" font-family="Segoe UI,sans-serif" font-size="11">GET  /api/group/*</text>
+      <!-- ═════════════════════════════════════ -->
+      <!-- Issuer Backend                        -->
+      <!-- ═════════════════════════════════════ -->
+      <rect x="28" y="48" width="218" height="132" rx="8" fill="#0d1f0f" stroke="#2ea043" stroke-width="1.4"/>
+      <rect x="28" y="48" width="218" height="36" rx="8" fill="#122a14"/>
+      <rect x="28" y="68" width="218" height="16" fill="#122a14"/>
+      <text x="137" y="72" text-anchor="middle" fill="#56d364" font-size="12.5" font-weight="700" font-family="Segoe UI,sans-serif">Issuer Backend</text>
+      <text x="137" y="84" text-anchor="middle" fill="#3fb95066" font-size="9.5" font-family="Segoe UI,sans-serif">Next.js API Routes</text>
+      <line x1="40" y1="93" x2="234" y2="93" stroke="#2ea04330"/>
+      <text x="44" y="111" fill="#8b949e" font-size="10.5" font-family="Segoe UI,sans-serif">Merkle root computation</text>
+      <text x="44" y="128" fill="#8b949e" font-size="10.5" font-family="Segoe UI,sans-serif">Issuer wallet (private key)</text>
+      <text x="44" y="145" fill="#8b949e" font-size="10.5" font-family="Segoe UI,sans-serif">POST /api/issuer/*</text>
+      <text x="44" y="162" fill="#8b949e" font-size="10.5" font-family="Segoe UI,sans-serif">GET  /api/group/*</text>
 
-      <!-- ─────────────────────────────────────────────────── -->
-      <!-- Holder Browser box                                  -->
-      <!-- ─────────────────────────────────────────────────── -->
-      <rect x="28" y="318" width="210" height="162" rx="8"
-            fill="#0c1628" stroke="#388bfd" stroke-width="1.4"/>
-      <rect x="28" y="318" width="210" height="38" rx="8" fill="#0e1e3a"/>
-      <rect x="28" y="338" width="210" height="18" fill="#0e1e3a"/>
-      <text x="133" y="342" text-anchor="middle"
-            fill="#79c0ff" font-family="Segoe UI,sans-serif" font-size="12.5" font-weight="700">Holder Browser</text>
-      <text x="133" y="356" text-anchor="middle"
-            fill="#388bfd66" font-family="Segoe UI,sans-serif" font-size="10">Client-Side Application</text>
-      <line x1="40" y1="364" x2="226" y2="364" stroke="#388bfd30" stroke-width="1"/>
-      <text x="46" y="383" fill="#8b949e" font-family="Segoe UI,sans-serif" font-size="11">Semaphore Identity (localStorage)</text>
-      <text x="46" y="402" fill="#8b949e" font-family="Segoe UI,sans-serif" font-size="11">trapdoor + nullifier  →  commitment</text>
-      <text x="46" y="421" fill="#8b949e" font-family="Segoe UI,sans-serif" font-size="11">ZK Proof Generation (WASM)</text>
-      <text x="46" y="440" fill="#8b949e" font-family="Segoe UI,sans-serif" font-size="11">Groth16 / BN254,  ~3 seconds</text>
-      <text x="46" y="459" fill="#8b949e" font-family="Segoe UI,sans-serif" font-size="11">@semaphore-protocol/proof</text>
+      <!-- ═════════════════════════════════════ -->
+      <!-- Group Store (Redis / JSON)            -->
+      <!-- ═════════════════════════════════════ -->
+      <rect x="38" y="204" width="198" height="80" rx="8" fill="#1c1506" stroke="#d29922" stroke-width="1.2"/>
+      <rect x="38" y="204" width="198" height="30" rx="8" fill="#261d08"/>
+      <rect x="38" y="220" width="198" height="14" fill="#261d08"/>
+      <text x="137" y="224" text-anchor="middle" fill="#d29922" font-size="11.5" font-weight="700" font-family="Segoe UI,sans-serif">Group Store</text>
+      <line x1="50" y1="238" x2="224" y2="238" stroke="#d2992230"/>
+      <text x="52" y="254" fill="#8b949e" font-size="10" font-family="Consolas,monospace">Upstash Redis (prod)</text>
+      <text x="52" y="270" fill="#8b949e" font-size="10" font-family="Consolas,monospace">data/group.json (dev)</text>
 
-      <!-- ─────────────────────────────────────────────────── -->
-      <!-- ComplianceGate box                                  -->
-      <!-- ─────────────────────────────────────────────────── -->
-      <rect x="303" y="55" width="380" height="222" rx="8"
-            fill="#0d1421" stroke="#388bfd" stroke-width="1.5"/>
-      <rect x="303" y="55" width="380" height="40" rx="8" fill="#0e1e3a"/>
-      <rect x="303" y="77" width="380" height="18" fill="#0e1e3a"/>
-      <text x="493" y="80" text-anchor="middle"
-            fill="#79c0ff" font-family="Segoe UI,sans-serif" font-size="13" font-weight="700">ComplianceGate.sol</text>
-      <text x="493" y="95" text-anchor="middle"
-            fill="#388bfd66" font-family="Segoe UI,sans-serif" font-size="10">Core compliance contract</text>
-      <line x1="316" y1="104" x2="671" y2="104" stroke="#388bfd30" stroke-width="1"/>
+      <!-- Arrow: Issuer ↔ Group Store -->
+      <line x1="137" y1="180" x2="137" y2="201" stroke="#d29922" stroke-width="1.3" marker-end="url(#ay)"/>
+      <text x="145" y="194" fill="#d2992299" font-size="9" font-family="Consolas,monospace">read/write</text>
 
-      <!-- state vars -->
-      <text x="320" y="127" fill="#7d8590" font-family="Consolas,monospace" font-size="10.5">uint256</text>
-      <text x="380" y="127" fill="#79c0ff" font-family="Consolas,monospace" font-size="10.5">currentRoot</text>
-      <text x="490" y="127" fill="#7d8590" font-family="Consolas,monospace" font-size="10.5">// ring buffer, 16 slots</text>
+      <!-- ═════════════════════════════════════ -->
+      <!-- Holder Browser                        -->
+      <!-- ═════════════════════════════════════ -->
+      <rect x="28" y="318" width="218" height="156" rx="8" fill="#0c1628" stroke="#388bfd" stroke-width="1.4"/>
+      <rect x="28" y="318" width="218" height="36" rx="8" fill="#0e1e3a"/>
+      <rect x="28" y="338" width="218" height="16" fill="#0e1e3a"/>
+      <text x="137" y="342" text-anchor="middle" fill="#79c0ff" font-size="12.5" font-weight="700" font-family="Segoe UI,sans-serif">Holder Browser</text>
+      <text x="137" y="354" text-anchor="middle" fill="#388bfd66" font-size="9.5" font-family="Segoe UI,sans-serif">Client-Side Application</text>
+      <line x1="40" y1="362" x2="234" y2="362" stroke="#388bfd30"/>
+      <text x="44" y="380" fill="#8b949e" font-size="10.5" font-family="Segoe UI,sans-serif">Semaphore Identity (localStorage)</text>
+      <text x="44" y="396" fill="#8b949e" font-size="10.5" font-family="Segoe UI,sans-serif">trapdoor + nullifier  →  commitment</text>
+      <text x="44" y="414" fill="#8b949e" font-size="10.5" font-family="Segoe UI,sans-serif">ZK Proof Generation (WASM)</text>
+      <text x="44" y="430" fill="#8b949e" font-size="10.5" font-family="Segoe UI,sans-serif">Groth16 / BN254,  ~3 seconds</text>
+      <text x="44" y="448" fill="#8b949e" font-size="10.5" font-family="Segoe UI,sans-serif">@semaphore-protocol/proof</text>
 
-      <text x="320" y="148" fill="#7d8590" font-family="Consolas,monospace" font-size="10.5">mapping</text>
-      <text x="375" y="148" fill="#79c0ff" font-family="Consolas,monospace" font-size="10.5">admitted[token][addr]</text>
-      <text x="527" y="148" fill="#7d8590" font-family="Consolas,monospace" font-size="10.5">→ bool</text>
+      <!-- ═════════════════════════════════════ -->
+      <!-- ComplianceGate.sol                    -->
+      <!-- ═════════════════════════════════════ -->
+      <rect x="310" y="55" width="360" height="216" rx="8" fill="#0d1421" stroke="#388bfd" stroke-width="1.5"/>
+      <rect x="310" y="55" width="360" height="38" rx="8" fill="#0e1e3a"/>
+      <rect x="310" y="75" width="360" height="18" fill="#0e1e3a"/>
+      <text x="490" y="79" text-anchor="middle" fill="#79c0ff" font-size="13" font-weight="700" font-family="Segoe UI,sans-serif">ComplianceGate.sol</text>
+      <line x1="324" y1="100" x2="656" y2="100" stroke="#388bfd30"/>
 
-      <text x="320" y="169" fill="#7d8590" font-family="Consolas,monospace" font-size="10.5">mapping</text>
-      <text x="375" y="169" fill="#79c0ff" font-family="Consolas,monospace" font-size="10.5">usedNullifier[hash]</text>
-      <text x="508" y="169" fill="#7d8590" font-family="Consolas,monospace" font-size="10.5">→ bool</text>
+      <text x="328" y="120" fill="#7d8590" font-size="10.5" font-family="Consolas,monospace">uint256</text>
+      <text x="388" y="120" fill="#79c0ff" font-size="10.5" font-family="Consolas,monospace">currentRoot</text>
+      <text x="498" y="120" fill="#484f58" font-size="10" font-family="Consolas,monospace">// ring buffer, 16 slots</text>
 
-      <line x1="316" y1="182" x2="671" y2="182" stroke="#21262d" stroke-width="1"/>
+      <text x="328" y="140" fill="#7d8590" font-size="10.5" font-family="Consolas,monospace">mapping</text>
+      <text x="388" y="140" fill="#79c0ff" font-size="10.5" font-family="Consolas,monospace">admitted[token][addr]</text>
+      <text x="543" y="140" fill="#484f58" font-size="10" font-family="Consolas,monospace">→ bool</text>
 
-      <text x="320" y="202" fill="#56d364" font-family="Consolas,monospace" font-size="10.5">updateRoot(newRoot)</text>
-      <text x="320" y="220" fill="#56d364" font-family="Consolas,monospace" font-size="10.5">admit(token, root, depth, nullifier, proof)</text>
-      <text x="320" y="238" fill="#8b949e" font-family="Consolas,monospace" font-size="10.5">isAdmitted(token, addr)</text>
-      <text x="320" y="256" fill="#8b949e" font-family="Consolas,monospace" font-size="10.5">registerToken(token)</text>
+      <text x="328" y="160" fill="#7d8590" font-size="10.5" font-family="Consolas,monospace">mapping</text>
+      <text x="388" y="160" fill="#79c0ff" font-size="10.5" font-family="Consolas,monospace">usedNullifier[hash]</text>
+      <text x="528" y="160" fill="#484f58" font-size="10" font-family="Consolas,monospace">→ bool</text>
 
-      <!-- ─────────────────────────────────────────────────── -->
-      <!-- SemaphoreVerifier box                               -->
-      <!-- ─────────────────────────────────────────────────── -->
-      <rect x="303" y="303" width="380" height="150" rx="8"
-            fill="#120f26" stroke="#6e40c9" stroke-width="1.4"/>
-      <rect x="303" y="303" width="380" height="38" rx="8" fill="#1a1035"/>
-      <rect x="303" y="323" width="380" height="18" fill="#1a1035"/>
-      <text x="493" y="327" text-anchor="middle"
-            fill="#c9b1fd" font-family="Segoe UI,sans-serif" font-size="12.5" font-weight="700">SemaphoreVerifier</text>
-      <text x="493" y="341" text-anchor="middle"
-            fill="#6e40c966" font-family="Segoe UI,sans-serif" font-size="10">@semaphore-protocol/contracts v4</text>
-      <line x1="316" y1="350" x2="671" y2="350" stroke="#6e40c930" stroke-width="1"/>
-      <text x="320" y="372" fill="#8b949e" font-family="Consolas,monospace" font-size="10.5">Groth16 proof verification</text>
-      <text x="320" y="391" fill="#8b949e" font-family="Consolas,monospace" font-size="10.5">BN254 curve  ·  EIP-196 / EIP-197 precompiles</text>
-      <text x="320" y="410" fill="#8b949e" font-family="Consolas,monospace" font-size="10.5">ecAdd  ·  ecMul  ·  ecPairing</text>
-      <text x="320" y="429" fill="#8b949e" font-family="Consolas,monospace" font-size="10.5">verifyProof(pA, pB, pC, pubSignals, depth)</text>
+      <line x1="324" y1="174" x2="656" y2="174" stroke="#21262d"/>
 
-      <!-- ─────────────────────────────────────────────────── -->
-      <!-- PrivateRWA box                                      -->
-      <!-- ─────────────────────────────────────────────────── -->
-      <rect x="742" y="142" width="160" height="226" rx="8"
-            fill="#0d1f0f" stroke="#2ea043" stroke-width="1.4"/>
-      <rect x="742" y="142" width="160" height="38" rx="8" fill="#122a14"/>
-      <rect x="742" y="162" width="160" height="18" fill="#122a14"/>
-      <text x="822" y="166" text-anchor="middle"
-            fill="#56d364" font-family="Segoe UI,sans-serif" font-size="12.5" font-weight="700">PrivateRWA.sol</text>
-      <text x="822" y="180" text-anchor="middle"
-            fill="#2ea04366" font-family="Segoe UI,sans-serif" font-size="10">ERC-20 Token</text>
-      <line x1="754" y1="188" x2="890" y2="188" stroke="#2ea04330" stroke-width="1"/>
-      <text x="758" y="208" fill="#8b949e" font-family="Consolas,monospace" font-size="10.5">transfer()</text>
-      <text x="758" y="227" fill="#8b949e" font-family="Consolas,monospace" font-size="10.5">balanceOf()</text>
-      <text x="758" y="246" fill="#8b949e" font-family="Consolas,monospace" font-size="10.5">mint()</text>
-      <line x1="754" y1="260" x2="890" y2="260" stroke="#21262d" stroke-width="1"/>
-      <text x="758" y="280" fill="#7d8590" font-family="Consolas,monospace" font-size="10">// _update hook:</text>
-      <text x="758" y="298" fill="#56d364" font-family="Consolas,monospace" font-size="10">isAdmitted(from)</text>
-      <text x="758" y="316" fill="#56d364" font-family="Consolas,monospace" font-size="10">isAdmitted(to)</text>
-      <text x="758" y="334" fill="#7d8590" font-family="Consolas,monospace" font-size="10">// or revert</text>
-      <text x="758" y="352" fill="#f85149" font-family="Consolas,monospace" font-size="10">NotAdmitted(addr)</text>
+      <text x="328" y="194" fill="#56d364" font-size="10.5" font-family="Consolas,monospace">updateRoot(newRoot)</text>
+      <text x="328" y="212" fill="#56d364" font-size="10.5" font-family="Consolas,monospace">admit(token, root, depth, nullifier, proof)</text>
+      <text x="328" y="230" fill="#8b949e" font-size="10.5" font-family="Consolas,monospace">isAdmitted(token, addr)</text>
+      <text x="328" y="248" fill="#8b949e" font-size="10.5" font-family="Consolas,monospace">registerToken(token)</text>
 
-      <!-- ═══════════════════════════════════════════════════ -->
-      <!-- ARROWS                                              -->
-      <!-- ═══════════════════════════════════════════════════ -->
+      <!-- ═════════════════════════════════════ -->
+      <!-- SemaphoreVerifier                     -->
+      <!-- ═════════════════════════════════════ -->
+      <rect x="310" y="298" width="360" height="148" rx="8" fill="#120f26" stroke="#6e40c9" stroke-width="1.4"/>
+      <rect x="310" y="298" width="360" height="36" rx="8" fill="#1a1035"/>
+      <rect x="310" y="318" width="360" height="16" fill="#1a1035"/>
+      <text x="490" y="321" text-anchor="middle" fill="#c9b1fd" font-size="12.5" font-weight="700" font-family="Segoe UI,sans-serif">SemaphoreVerifier</text>
+      <text x="490" y="335" text-anchor="middle" fill="#6e40c966" font-size="9.5" font-family="Segoe UI,sans-serif">@semaphore-protocol/contracts v4</text>
+      <line x1="324" y1="344" x2="656" y2="344" stroke="#6e40c930"/>
+      <text x="328" y="365" fill="#8b949e" font-size="10.5" font-family="Consolas,monospace">Groth16 proof verification</text>
+      <text x="328" y="383" fill="#8b949e" font-size="10.5" font-family="Consolas,monospace">BN254  ·  EIP-196 / EIP-197 precompiles</text>
+      <text x="328" y="401" fill="#8b949e" font-size="10.5" font-family="Consolas,monospace">ecAdd  ·  ecMul  ·  ecPairing</text>
+      <text x="328" y="419" fill="#8b949e" font-size="10.5" font-family="Consolas,monospace">verifyProof(pA, pB, pC, pubSignals, depth)</text>
+
+      <!-- ═════════════════════════════════════ -->
+      <!-- PrivateRWA.sol                        -->
+      <!-- ═════════════════════════════════════ -->
+      <rect x="735" y="150" width="178" height="222" rx="8" fill="#0d1f0f" stroke="#2ea043" stroke-width="1.4"/>
+      <rect x="735" y="150" width="178" height="36" rx="8" fill="#122a14"/>
+      <rect x="735" y="170" width="178" height="16" fill="#122a14"/>
+      <text x="824" y="174" text-anchor="middle" fill="#56d364" font-size="12.5" font-weight="700" font-family="Segoe UI,sans-serif">PrivateRWA.sol</text>
+      <text x="824" y="186" text-anchor="middle" fill="#2ea04366" font-size="9.5" font-family="Segoe UI,sans-serif">ERC-20 Token</text>
+      <line x1="748" y1="194" x2="900" y2="194" stroke="#2ea04330"/>
+      <text x="750" y="214" fill="#8b949e" font-size="10.5" font-family="Consolas,monospace">transfer()</text>
+      <text x="750" y="232" fill="#8b949e" font-size="10.5" font-family="Consolas,monospace">balanceOf()</text>
+      <text x="750" y="250" fill="#8b949e" font-size="10.5" font-family="Consolas,monospace">mint()</text>
+      <line x1="748" y1="262" x2="900" y2="262" stroke="#21262d"/>
+      <text x="750" y="280" fill="#484f58" font-size="10" font-family="Consolas,monospace">// _update hook:</text>
+      <text x="750" y="298" fill="#56d364" font-size="10" font-family="Consolas,monospace">isAdmitted(from)</text>
+      <text x="750" y="316" fill="#56d364" font-size="10" font-family="Consolas,monospace">isAdmitted(to)</text>
+      <text x="750" y="336" fill="#484f58" font-size="10" font-family="Consolas,monospace">// or revert</text>
+      <text x="750" y="354" fill="#f85149" font-size="10" font-family="Consolas,monospace">NotAdmitted(addr)</text>
+
+      <!-- ═══════════════ ARROWS ═══════════════ -->
 
       <!-- A1: Issuer → ComplianceGate  updateRoot() -->
-      <line x1="238" y1="118" x2="300" y2="118"
-            stroke="#2ea043" stroke-width="1.5" marker-end="url(#arr-g)"/>
-      <rect x="239" y="104" width="63" height="13" fill="#161b22"/>
-      <text x="240" y="115" fill="#3fb950" font-family="Consolas,monospace" font-size="9.5">updateRoot()</text>
+      <line x1="246" y1="112" x2="307" y2="112" stroke="#2ea043" stroke-width="1.5" marker-end="url(#ag)"/>
+      <rect x="248" y="99" width="62" height="12" fill="#161b22"/>
+      <text x="249" y="109" fill="#3fb950" font-size="9.5" font-family="Consolas,monospace">updateRoot()</text>
 
       <!-- A2: Issuer → ComplianceGate  registerToken() -->
-      <line x1="238" y1="165" x2="300" y2="165"
-            stroke="#2ea043" stroke-width="1.5" marker-end="url(#arr-g)"/>
-      <rect x="235" y="151" width="68" height="13" fill="#161b22"/>
-      <text x="236" y="162" fill="#3fb950" font-family="Consolas,monospace" font-size="9.5">registerToken()</text>
+      <line x1="246" y1="152" x2="307" y2="152" stroke="#2ea043" stroke-width="1.5" marker-end="url(#ag)"/>
+      <rect x="244" y="139" width="68" height="12" fill="#161b22"/>
+      <text x="245" y="149" fill="#3fb950" font-size="9.5" font-family="Consolas,monospace">registerToken()</text>
 
-      <!-- A3: Issuer → PrivateRWA  mint()  (routes above chain box) -->
-      <!-- up from issuer top, right above everything, down to RWA -->
-      <polyline points="133,58 133,16 822,16 822,142"
-                fill="none" stroke="#2ea043" stroke-width="1.5" marker-end="url(#arr-g)"/>
-      <rect x="454" y="4" width="48" height="13" fill="#161b22"/>
-      <text x="455" y="14" fill="#3fb950" font-family="Consolas,monospace" font-size="9.5">mint(to, amt)</text>
+      <!-- A3: Issuer → PrivateRWA  mint()  (route over top) -->
+      <polyline points="137,48 137,18 824,18 824,150" fill="none" stroke="#2ea043" stroke-width="1.5" marker-end="url(#ag)"/>
+      <rect x="454" y="6" width="68" height="12" fill="#161b22"/>
+      <text x="455" y="16" fill="#3fb950" font-size="9.5" font-family="Consolas,monospace">mint(to, amt)</text>
 
-      <!-- A4: Holder → ComplianceGate  admit(proof)  -->
-      <!-- elbow: right then up then right -->
-      <polyline points="238,395 260,395 260,290 300,290"
-                fill="none" stroke="#388bfd" stroke-width="1.5" marker-end="url(#arr-b)"/>
-      <rect x="236" y="377" width="60" height="16" fill="#161b22"/>
-      <text x="237" y="387" fill="#79c0ff" font-family="Consolas,monospace" font-size="9.5">admit(proof)</text>
+      <!-- A4: Holder → ComplianceGate  admit(proof) -->
+      <polyline points="246,395  268,395  268,290  307,290" fill="none" stroke="#388bfd" stroke-width="1.5" marker-end="url(#ab)"/>
+      <rect x="248" y="382" width="60" height="12" fill="#161b22"/>
+      <text x="249" y="392" fill="#79c0ff" font-size="9.5" font-family="Consolas,monospace">admit(proof)</text>
 
-      <!-- A5: ComplianceGate → SemaphoreVerifier  verifyProof() (vertical) -->
-      <line x1="493" y1="277" x2="493" y2="300"
-            stroke="#6e40c9" stroke-width="1.5" marker-end="url(#arr-p)"/>
-      <rect x="496" y="282" width="70" height="13" fill="#161b22"/>
-      <text x="497" y="293" fill="#b392f0" font-family="Consolas,monospace" font-size="9.5">verifyProof()</text>
+      <!-- A5: ComplianceGate → SemaphoreVerifier  verifyProof() -->
+      <line x1="490" y1="271" x2="490" y2="295" stroke="#6e40c9" stroke-width="1.5" marker-end="url(#ap)"/>
+      <rect x="494" y="276" width="68" height="12" fill="#161b22"/>
+      <text x="495" y="286" fill="#b392f0" font-size="9.5" font-family="Consolas,monospace">verifyProof()</text>
 
-      <!-- A6: PrivateRWA → ComplianceGate  isAdmitted() (horizontal left) -->
-      <line x1="742" y1="262" x2="686" y2="262"
-            stroke="#7d8590" stroke-width="1.5" marker-end="url(#arr-l)"/>
-      <rect x="686" y="248" width="58" height="13" fill="#161b22"/>
-      <text x="687" y="258" fill="#8b949e" font-family="Consolas,monospace" font-size="9.5">isAdmitted()</text>
+      <!-- A6: PrivateRWA → ComplianceGate  isAdmitted() -->
+      <line x1="735" y1="260" x2="673" y2="260" stroke="#7d8590" stroke-width="1.5" marker-end="url(#al)"/>
+      <rect x="678" y="248" width="62" height="12" fill="#161b22"/>
+      <text x="679" y="257" fill="#8b949e" font-size="9.5" font-family="Consolas,monospace">isAdmitted()</text>
 
-      <!-- ─────────────────────────────────────────────────── -->
-      <!-- Legend                                              -->
-      <!-- ─────────────────────────────────────────────────── -->
-      <rect x="28" y="478" width="864" height="1" fill="#21262d"/>
-      <!-- legend items -->
-      <line x1="28" y1="495" x2="58" y2="495" stroke="#2ea043" stroke-width="1.5" marker-end="url(#arr-g)"/>
-      <text x="62" y="499" fill="#7d8590" font-family="Segoe UI,sans-serif" font-size="10">Issuer action (onlyIssuer)</text>
-      <line x1="228" y1="495" x2="258" y2="495" stroke="#388bfd" stroke-width="1.5" marker-end="url(#arr-b)"/>
-      <text x="262" y="499" fill="#7d8590" font-family="Segoe UI,sans-serif" font-size="10">Holder action (public)</text>
-      <line x1="418" y1="495" x2="448" y2="495" stroke="#6e40c9" stroke-width="1.5" marker-end="url(#arr-p)"/>
-      <text x="452" y="499" fill="#7d8590" font-family="Segoe UI,sans-serif" font-size="10">Internal / verification</text>
-      <line x1="608" y1="495" x2="638" y2="495" stroke="#7d8590" stroke-width="1.5" marker-end="url(#arr-l)"/>
-      <text x="642" y="499" fill="#7d8590" font-family="Segoe UI,sans-serif" font-size="10">Read / query</text>
+      <!-- ── Legend ── -->
+      <rect x="28" y="502" width="884" height="1" fill="#21262d"/>
+      <line x1="28" y1="520" x2="56" y2="520" stroke="#2ea043" stroke-width="1.5" marker-end="url(#ag)"/>
+      <text x="60" y="524" fill="#7d8590" font-size="10" font-family="Segoe UI,sans-serif">Issuer action (onlyIssuer)</text>
+
+      <line x1="230" y1="520" x2="258" y2="520" stroke="#388bfd" stroke-width="1.5" marker-end="url(#ab)"/>
+      <text x="262" y="524" fill="#7d8590" font-size="10" font-family="Segoe UI,sans-serif">Holder action (public)</text>
+
+      <line x1="420" y1="520" x2="448" y2="520" stroke="#6e40c9" stroke-width="1.5" marker-end="url(#ap)"/>
+      <text x="452" y="524" fill="#7d8590" font-size="10" font-family="Segoe UI,sans-serif">Internal verification</text>
+
+      <line x1="600" y1="520" x2="628" y2="520" stroke="#d29922" stroke-width="1.5" marker-end="url(#ay)"/>
+      <text x="632" y="524" fill="#7d8590" font-size="10" font-family="Segoe UI,sans-serif">Storage read/write</text>
+
+      <line x1="780" y1="520" x2="808" y2="520" stroke="#7d8590" stroke-width="1.5" marker-end="url(#al)"/>
+      <text x="812" y="524" fill="#7d8590" font-size="10" font-family="Segoe UI,sans-serif">Query</text>
     </svg>
   </div>
 </div>
 
 
-<!-- ══════════════════════════════════════════════════════════ -->
-<!-- DIAGRAM 2 — Sequence Diagram (Mermaid)                    -->
-<!-- ══════════════════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- DIAGRAM 2 — Sequence Diagram (Mermaid)                        -->
+<!-- ══════════════════════════════════════════════════════════════ -->
 <div class="section">
   <div class="section-num">Diagram 2 of 3</div>
   <div class="section-title">Operational Lifecycle — Sequence Diagram</div>
   <div class="section-desc">
-    Message flow across all four operational phases.
-    Phase 1 (root publication) executes once per batch of KYC approvals.
-    Phase 2 (self-admission) executes once per holder per token.
-    Phase 3 and 4 (mint and transfer) execute on demand thereafter — with zero per-transaction proof cost.
+    Message flow across all four phases.
+    Phase 1 runs once per batch. Phase 2 runs once per holder per token.
+    Phase 3–4 run on demand — zero per-transaction proof cost.
+    The Group Store (Upstash Redis on Vercel, local JSON in dev) persists off-chain state.
   </div>
   <div class="diagram-wrap">
     <div class="mermaid">
@@ -384,6 +280,7 @@
 }}%%
 sequenceDiagram
     participant IB as Issuer Backend
+    participant GS as Group Store<br/>(Redis / JSON)
     participant HB as Holder Browser
     participant CG as ComplianceGate
     participant SV as SemaphoreVerifier
@@ -391,27 +288,30 @@ sequenceDiagram
 
     rect rgb(12, 28, 14)
         Note over IB,RW: Phase 1 — Allowlist Setup
-        HB->>HB: Generate Semaphore Identity<br/>(trapdoor, nullifier → commitment)
-        HB-->>IB: Share commitment (UI / out-of-band)
-        IB->>IB: Add commitment to Semaphore group<br/>Recompute Merkle root
+        HB->>HB: Generate Semaphore Identity
+        HB-->>IB: Share commitment (UI paste)
+        IB->>GS: Store commitment
+        IB->>IB: Recompute Merkle root
         IB->>CG: updateRoot(newRoot)
-        CG-->>IB: emit RootUpdated(newRoot)
+        CG-->>IB: RootUpdated event
         IB->>CG: registerToken(tokenAddr)
-        CG-->>IB: emit TokenRegistered(tokenAddr)
+        CG-->>IB: TokenRegistered event
     end
 
     rect rgb(12, 16, 36)
         Note over IB,RW: Phase 2 — Self-Admission (once per holder per token)
-        HB->>IB: GET /api/group/merkle-path?commitment=...
-        IB-->>HB: Merkle siblings, depth, root
-        HB->>HB: Generate ZK proof (WASM, ~3s)<br/>scope = hash(tokenAddr)<br/>message = hash(holderAddr)
-        HB->>CG: admit(token, root, depth, nullifier, proof[8])
-        CG->>CG: knownRoot[root] == true
-        CG->>CG: usedNullifier[nullifier] == false
+        HB->>IB: GET /api/group/merkle-path
+        IB->>GS: Read group state
+        GS-->>IB: Members list
+        IB-->>HB: Merkle siblings + depth + root
+        HB->>HB: Generate ZK proof (WASM, ~3s)
+        HB->>CG: admit(token, root, depth, nullifier, proof)
+        CG->>CG: Validate root, check nullifier
         CG->>SV: verifyProof(pA, pB, pC, pubSignals, depth)
         SV-->>CG: true
-        CG->>CG: usedNullifier[nullifier] = true<br/>admitted[token][msg.sender] = true
-        CG-->>HB: emit Admitted(token, holder, nullifier)
+        CG->>CG: Record: admitted[token][sender] = true
+        CG-->>HB: Admitted event
+        Note right of CG: Nullifier is NOT linked<br/>to the commitment
     end
 
     rect rgb(12, 28, 14)
@@ -419,7 +319,7 @@ sequenceDiagram
         IB->>RW: mint(holderAddr, amount)
         RW->>CG: isAdmitted(token, holderAddr)
         CG-->>RW: true
-        RW-->>IB: emit Transfer(0x0, holderAddr, amount)
+        RW-->>IB: Transfer event (mint)
     end
 
     rect rgb(28, 12, 12)
@@ -428,10 +328,10 @@ sequenceDiagram
         RW->>CG: isAdmitted(token, sender)
         CG-->>RW: true
         RW->>CG: isAdmitted(token, recipient)
-        alt recipient is admitted
+        alt Recipient is admitted
             CG-->>RW: true
-            RW-->>HB: emit Transfer(sender, recipient, amount)
-        else recipient is NOT admitted
+            RW-->>HB: Transfer event
+        else Recipient NOT admitted
             CG-->>RW: false
             RW-->>HB: revert NotAdmitted(recipient)
         end
@@ -441,73 +341,75 @@ sequenceDiagram
 </div>
 
 
-<!-- ══════════════════════════════════════════════════════════ -->
-<!-- DIAGRAM 3 — Privacy Model                                 -->
-<!-- ══════════════════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- DIAGRAM 3 — Privacy Model                                     -->
+<!-- ══════════════════════════════════════════════════════════════ -->
 <div class="section">
   <div class="section-num">Diagram 3 of 3</div>
   <div class="section-title">Privacy Model — What Is Public vs. Private</div>
   <div class="section-desc">
-    Information flow from off-chain identity commitments to on-chain state.
-    The ZK proof bridges the two worlds: it proves group membership without revealing
-    which commitment belongs to which address. The admitted-address set is public by
-    necessity (needed for the transfer hook), but it is cryptographically unlinkable to the
-    off-chain identity list.
+    Data flow from off-chain identity commitments to on-chain state.
+    The ZK proof bridges the two domains without leaking which commitment corresponds
+    to which address. The admitted-address set is public by necessity (transfer hook),
+    but cryptographically unlinkable to the off-chain identity list.
   </div>
   <div class="diagram-wrap">
     <div class="privacy-grid">
 
       <!-- LEFT: Private -->
       <div>
-        <div class="priv-side-label priv">Private — Issuer Backend Only</div>
+        <div class="priv-side-label priv">Private — Off-Chain Only</div>
 
         <div class="priv-item priv-bg">
           <div class="priv-item-name">Identity Commitment List</div>
           <div class="priv-item-note">
-            [ c&#8320;, c&#8321;, c&#8322;, &hellip;, c&#8345; ]<br>
-            Each commitment = H(trapdoor, nullifier).<br>
-            Stored in data/group.json. Never published on-chain. Not in any event log.
+            [ c&#8320;, c&#8321;, c&#8322;, ..., c&#8345; ]<br>
+            Each c = H(trapdoor, nullifier).<br>
+            Stored in Upstash Redis (prod) or data/group.json (dev).
+            Never published on-chain. Not in any event log.
           </div>
         </div>
 
         <div class="priv-item priv-bg">
           <div class="priv-item-name">Semaphore Merkle Tree</div>
           <div class="priv-item-note">
-            Full tree structure including all leaves.<br>
-            Issuer backend uses it to produce Merkle paths for holder proof generation.
-            The tree itself is never broadcast.
+            Full tree structure with all leaves.
+            Used by issuer to produce Merkle paths for holder proof generation.
+            The tree is never broadcast.
           </div>
         </div>
 
         <div class="priv-item priv-bg">
           <div class="priv-item-name">Identity &harr; Address Mapping</div>
           <div class="priv-item-note">
-            The issuer knows which real-world identity provided which commitment.<br>
-            This mapping exists only in the issuer's off-chain KYC records.
+            Which real-world identity provided which commitment.
+            Exists only in the issuer's off-chain KYC records.
           </div>
         </div>
 
         <div class="priv-item priv-bg">
           <div class="priv-item-name">Total Group Size</div>
           <div class="priv-item-note">
-            How many investors are KYC-approved is not inferrable from on-chain state.
+            Number of KYC-approved investors is not inferrable from on-chain state.
             Only the root (a single hash) is public.
           </div>
         </div>
       </div>
 
       <!-- CENTER: ZK Bridge -->
-      <div style="display:flex;align-items:center;justify-content:center;">
+      <div style="display:flex;align-items:center;justify-content:center">
         <div class="bridge-box">
-          <div class="bridge-title">ZK Proof Layer</div>
+          <div class="bridge-title">ZK Proof Bridge</div>
           <div class="bridge-step">Semaphore Identity<br><span style="color:#6e40c9">(trapdoor + nullifier)</span></div>
-          <div class="bridge-arrow">↓</div>
+          <div class="bridge-arrow">&darr;</div>
           <div class="bridge-step">Merkle path<br><span style="color:#6e40c9">(from issuer API)</span></div>
-          <div class="bridge-arrow">↓</div>
-          <div class="bridge-step">Groth16 Proof<br><span style="color:#6e40c9">generated in browser</span><br><span style="color:#8b949e" style="font-size:10px">~3 seconds, WASM</span></div>
-          <div class="bridge-arrow">↓</div>
-          <div class="bridge-step">Proves: <em style="color:#c9b1fd">"I am a member<br>of the approved group"</em></div>
-          <div class="bridge-step" style="margin-top:8px">Reveals: <em style="color:#f85149">nothing</em><br>about which member</div>
+          <div class="bridge-arrow">&darr;</div>
+          <div class="bridge-step">Groth16 Proof<br><span style="color:#6e40c9">generated in browser</span><br><span style="color:#484f58">~3 seconds, WASM</span></div>
+          <div class="bridge-arrow">&darr;</div>
+          <div class="bridge-step">Proves:<br><em style="color:#c9b1fd">"I am a member of<br>the approved group"</em></div>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid #6e40c930">
+            <div class="bridge-step">Reveals:<br><em style="color:#f85149">nothing</em><br>about which member</div>
+          </div>
         </div>
       </div>
 
@@ -519,7 +421,7 @@ sequenceDiagram
           <div class="priv-item-name">Merkle Root</div>
           <div class="priv-item-note">
             ComplianceGate.currentRoot() &rarr; uint256<br>
-            A 32-byte hash that commits to the full group state.<br>
+            A 32-byte hash committing to the full group.
             Cannot be used to enumerate members.
           </div>
         </div>
@@ -527,27 +429,26 @@ sequenceDiagram
         <div class="priv-item pub-bg">
           <div class="priv-item-name">Admitted Address Set</div>
           <div class="priv-item-note">
-            ComplianceGate.admitted[token][addr] &rarr; bool<br>
-            Public by necessity: the transfer hook must check it without a per-tx proof.<br>
+            admitted[token][addr] &rarr; bool<br>
+            Public by necessity: transfer hook must check without per-tx proof.<br>
             <strong style="color:#388bfd">Unlinkable</strong> to the off-chain commitment list.
           </div>
         </div>
 
         <div class="priv-item pub-bg">
-          <div class="priv-item-name">Nullifier Hashes (Used)</div>
+          <div class="priv-item-name">Nullifier Hashes</div>
           <div class="priv-item-note">
-            ComplianceGate.usedNullifier[hash] &rarr; bool<br>
-            Prevents double-admission. The hash is derived from identity internals
-            and the token scope — not reversible to an identity or address.
+            usedNullifier[hash] &rarr; bool<br>
+            Prevents double-admission. Derived from identity internals + token scope.
+            Not reversible to an identity or address.
           </div>
         </div>
 
         <div class="priv-item pub-bg">
-          <div class="priv-item-name">Token Balances &amp; Transfers</div>
+          <div class="priv-item-name">Token Balances and Transfers</div>
           <div class="priv-item-note">
             Standard ERC-20 events and balanceOf().<br>
-            Transaction-level privacy (shielded pools, stealth addresses)
-            is explicitly out of scope for this protocol.
+            Transaction-level privacy is explicitly out of scope.
           </div>
         </div>
 
@@ -556,7 +457,7 @@ sequenceDiagram
           <div class="item">Which commitment corresponds to which admitted address</div>
           <div class="item">How many investors are in the off-chain group</div>
           <div class="item">Which approved investors have not yet self-admitted</div>
-          <div class="item">Whether two admitted addresses belong to the same group member</div>
+          <div class="item">Whether two admitted addresses share the same group member</div>
         </div>
       </div>
 
@@ -566,18 +467,18 @@ sequenceDiagram
 
 <script>
   mermaid.initialize({
-    startOnLoad: true,
-    theme: 'dark',
-    securityLevel: 'loose',
-    sequence: {
-      diagramMarginX: 30,
-      diagramMarginY: 20,
-      actorMargin: 60,
-      width: 140,
-      height: 55,
-      messageMargin: 35,
-      noteMargin: 12,
-      mirrorActors: true,
+    startOnLoad:true,
+    theme:'dark',
+    securityLevel:'loose',
+    sequence:{
+      diagramMarginX:30,
+      diagramMarginY:20,
+      actorMargin:50,
+      width:130,
+      height:50,
+      messageMargin:32,
+      noteMargin:10,
+      mirrorActors:true,
     },
   });
 </script>
