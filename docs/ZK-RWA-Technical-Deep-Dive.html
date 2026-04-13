@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>ZK-RWA Allowlist — 操作流程 × 痛點解析 × 技術實現</title>
+<style>
+  @page { size: A4; margin: 1.8cm; }
+  @media print { .page-break { page-break-before: always; } body { font-size: 10.5pt; } }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Noto Sans TC", "Microsoft JhengHei", -apple-system, sans-serif;
+    max-width: 780px; margin: 0 auto; padding: 36px 20px;
+    color: #1a1a2e; line-height: 1.75; background: #fff;
+  }
+  h1 { font-size: 26pt; margin: 0 0 6px; color: #0d1b2a; }
+  h2 { font-size: 17pt; color: #1b263b; border-bottom: 2px solid #415a77; padding-bottom: 5px; margin-top: 36px; }
+  h3 { font-size: 13pt; color: #415a77; margin-top: 24px; }
+  .sub { color: #778da9; font-size: 13pt; margin-bottom: 32px; }
+  .box { padding: 14px 18px; margin: 14px 0; border-radius: 0 8px 8px 0; }
+  .box-blue { background: #eff6ff; border-left: 4px solid #3b82f6; }
+  .box-green { background: #f0fdf4; border-left: 4px solid #16a34a; }
+  .box-red { background: #fef2f2; border-left: 4px solid #dc2626; }
+  .box-amber { background: #fffbeb; border-left: 4px solid #d97706; }
+  .box-purple { background: #faf5ff; border-left: 4px solid #7c3aed; }
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 10pt; }
+  th, td { border: 1px solid #d1d5db; padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: #f3f4f6; font-weight: 600; }
+  code { background: #f3f4f6; padding: 1px 5px; border-radius: 3px; font-family: "JetBrains Mono", monospace; font-size: 0.88em; }
+  pre { background: #1e293b; color: #e2e8f0; padding: 14px; border-radius: 8px; overflow-x: auto; font-size: 9.5pt; line-height: 1.55; }
+  pre .cm { color: #94a3b8; }
+  pre .kw { color: #7dd3fc; }
+  pre .fn { color: #fbbf24; }
+  pre .str { color: #86efac; }
+  pre .err { color: #fca5a5; }
+  pre .hl { background: rgba(251,191,36,0.12); display: inline; }
+  .step-num { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: #415a77; color: #fff; font-weight: 700; font-size: 14px; margin-right: 8px; flex-shrink: 0; }
+  .flow { display: flex; align-items: flex-start; gap: 10px; margin: 18px 0; }
+  .flow-body { flex: 1; }
+  .arrow { text-align: center; color: #9ca3af; font-size: 22px; margin: 4px 0; }
+  .tag { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.85em; font-weight: 600; }
+  .tag-issuer { background: #fef3c7; color: #92400e; }
+  .tag-holder { background: #d1fae5; color: #065f46; }
+  .tag-chain { background: #dbeafe; color: #1e40af; }
+  .tag-browser { background: #ede9fe; color: #5b21b6; }
+  .tag-server { background: #fce7f3; color: #9d174d; }
+  .file-ref { font-family: monospace; font-size: 0.88em; color: #6366f1; }
+  .footer { margin-top: 50px; padding-top: 16px; border-top: 1px solid #e5e7eb; color: #9ca3af; font-size: 8.5pt; text-align: center; }
+  .cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 600px) { .cols2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<h1>ZK-RWA Allowlist</h1>
+<div class="sub">操作流程 × 痛點解析 × 技術實現完全手冊</div>
+
+<!-- ================================================================== -->
+<h2>第一部分：使用者操作流程（以及為什麼這樣設計）</h2>
+
+<p>整個系統有兩種角色：<span class="tag tag-issuer">Issuer 發行方</span> 和 <span class="tag tag-holder">Holder 投資者</span>。下面按照實際操作順序，逐步解釋每一步<b>做了什麼</b>、<b>為什麼要做</b>、<b>解決了什麼痛點</b>。</p>
+
+<!-- STEP 1 -->
+<h3>Step 1：Holder 建立身份（/join）</h3>
+
+<div class="flow">
+<span class="step-num">1</span>
+<div class="flow-body">
+<b>操作：</b>投資者打開 <code>/join</code> 頁面，按下「Create identity」。<br>
+<b>實際發生的事：</b>瀏覽器在本地隨機產生一組 Semaphore identity（包含 trapdoor 和 nullifier 兩個隨機數），存進 localStorage。然後從這組密鑰計算出一個 <b>commitment</b>（一長串數字）顯示在畫面上。
+</div>
+</div>
+
+<div class="box box-amber">
+<b>commitment 是什麼？</b><br>
+commitment = Poseidon 雜湊函數(trapdoor, nullifier)。<br>
+它就像你的「會員編號的指紋」— 可以公開交給 issuer，但無法反推出你的密鑰。<br>
+就算 issuer 被駭，拿到你的 commitment 也無法冒充你生成 proof。
+</div>
+
+<div class="box box-green">
+<b>痛點 → 解法</b><br>
+<b>痛點：</b>傳統 KYC 模式中，投資者必須直接把自己的錢包地址交給 issuer 寫進鏈上名單，導致地址與身份直接綁定且公開。<br>
+<b>解法：</b>投資者只交出 commitment（一個無法反推的 hash），而不是錢包地址。地址到後面的 admit 步驟才會出現，而且在鏈上完全無法追溯回這個 commitment。
+</div>
+
+<!-- STEP 2 -->
+<h3>Step 2：Issuer 加入成員到群組（/issuer → Add）</h3>
+
+<div class="flow">
+<span class="step-num">2</span>
+<div class="flow-body">
+<b>操作：</b>Issuer 在 dashboard 貼上 holder 的 commitment，按「Add to off-chain group」。<br>
+<b>實際發生的事：</b>前端呼叫 <code>POST /api/issuer/add-member</code>。伺服器把 commitment 寫進 <code>data/group.json</code>，然後用 Semaphore 的 <code>Group</code> 類別把所有 commitment 建成一棵 Merkle tree，計算出新的 root。
+</div>
+</div>
+
+<div class="box box-blue">
+<b>Merkle tree 在這一步做了什麼？</b><br>
+想像把 N 個 commitment 像建金字塔一樣，兩兩配對做 hash，一直往上疊，最後得到一個頂端的值 = <b>Merkle root</b>。<br>
+這棵樹有一個超強特性：<b>只需要 root + 一條 path（O(log N) 個 hash），就能證明某個 commitment 確實是樹的一部分</b>。不需要知道完整的樹。
+</div>
+
+<div class="box box-green">
+<b>痛點 → 解法</b><br>
+<b>痛點：</b>ERC-3643 需要在鏈上逐一註冊每個投資者地址，每一筆都是公開事件。<br>
+<b>解法：</b>名單只存在 issuer 的伺服器上（一個 JSON 檔案），完全不上鏈。後面只會上傳一個 32 bytes 的 root。
+</div>
+
+<!-- STEP 3 -->
+<h3>Step 3：Issuer 發布 Merkle Root（/issuer → Publish）</h3>
+
+<div class="flow">
+<span class="step-num">3</span>
+<div class="flow-body">
+<b>操作：</b>Issuer 按下「Publish current root on-chain」。<br>
+<b>實際發生的事：</b>前端呼叫 <code>POST /api/issuer/publish-root</code>。伺服器用 issuer 的私鑰簽署一筆交易，呼叫鏈上的 <code>ComplianceGate.updateRoot(newRoot)</code>。合約把 root 存入 <code>currentRoot</code>，並加入歷史環形緩衝區。
+</div>
+</div>
+
+<div class="box box-amber">
+<b>為什麼需要「發布」這一步？</b><br>
+因為 ZK proof 是「我的 commitment 在<b>某個 root</b> 對應的 Merkle tree 裡面」。<br>
+合約需要知道哪些 root 是合法的（由 issuer 發布過的），才能驗證 proof。<br>
+如果 root 不在合約裡，proof 就無效 — 防止有人偽造 root。
+</div>
+
+<div class="box box-green">
+<b>痛點 → 解法</b><br>
+<b>痛點：</b>ERC-3643 每次加一個投資者都要發一筆鏈上交易（公開的 IdentityRegistered 事件）。<br>
+<b>解法：</b>Issuer 可以在 off-chain 一次加入 100 個成員，最後只發布一次 root。<b>一筆交易、一個 hash、零資訊洩露</b>。外部只看到「root 更新了」，完全不知道加了幾個人、是誰。
+</div>
+
+<!-- STEP 4 -->
+<h3>Step 4：Holder 產生 ZK Proof 並自我 Admit（/admit）</h3>
+
+<div class="flow">
+<span class="step-num">4</span>
+<div class="flow-body">
+<b>操作：</b>投資者打開 <code>/admit</code>，連接錢包，按「Generate proof & admit」。<br>
+<b>實際發生的事（分 4 小步）：</b>
+</div>
+</div>
+
+<table>
+<tr>
+<th style="width:60px">步驟</th>
+<th>發生什麼</th>
+<th>在哪裡執行</th>
+</tr>
+<tr>
+<td>4a</td>
+<td>前端呼叫 <code>GET /api/group/merkle-path?commitment=...</code><br>
+伺服器查 group.json，找到你的 commitment 在 Merkle tree 中的位置，回傳一條 <b>Merkle path</b>（你的兄弟節點們的 hash）。</td>
+<td><span class="tag tag-server">伺服器</span></td>
+</tr>
+<tr>
+<td>4b</td>
+<td>瀏覽器拿到 path 後，用 Semaphore SDK 的 <code>generateProof()</code> 開始在 WASM 裡跑 Groth16 proving。<br>
+輸入：identity（localStorage 裡的密鑰）、Merkle path、message（你的錢包地址）、scope（token 地址）。<br>
+輸出：一個零知識證明（8 個橢圓曲線上的點）+ nullifier + root。<br>
+<b>耗時約 3 秒。</b></td>
+<td><span class="tag tag-browser">瀏覽器</span></td>
+</tr>
+<tr>
+<td>4c</td>
+<td>瀏覽器呼叫 MetaMask 簽署交易，送出 <code>ComplianceGate.admit(token, root, depth, nullifier, points)</code></td>
+<td><span class="tag tag-holder">MetaMask</span></td>
+</tr>
+<tr>
+<td>4d</td>
+<td>合約驗證 proof（呼叫 SemaphoreVerifier，用 bn254 pairing 運算）。<br>
+通過後：<code>admitted[token][你的地址] = true</code>。<br>
+失敗則 revert。</td>
+<td><span class="tag tag-chain">鏈上</span></td>
+</tr>
+</table>
+
+<div class="box box-purple">
+<b>ZK proof 在數學上到底證明了什麼？</b><br>
+一個 Groth16 proof 讓合約確信以下三件事同時為真：<br>
+① <b>我知道一個 commitment C，C 在某個 Merkle root R 對應的樹裡面</b>（= 我在名單上）<br>
+② <b>我用的 message = 我的錢包地址</b>（= 別人不能拿我的 proof 冒充 admit）<br>
+③ <b>我用的 scope = 這個 token 的地址</b>（= 我對 token A 的 admit 不會被偷用在 token B）<br>
+<br>
+但合約完全不知道 C 是什麼。它只看到 root、nullifier、proof 通過了。<b>零知識。</b>
+</div>
+
+<div class="box box-green">
+<b>痛點 → 解法</b><br>
+<b>痛點：</b>ERC-3643 中，投資者被 issuer 直接寫進鏈上名單。外部可以看到「0xABC 被加入了 XX token 的白名單」，直接知道是誰。<br>
+<b>解法：</b>在我們的系統裡，是投資者<b>自己</b>發起 admit 交易。外部看到的是「0xABC 被 admit 了」，但<b>完全不知道 0xABC 對應群組中的哪一個 commitment</b>。而且群組裡沒 admit 的成員，在鏈上<b>完全不存在</b>。
+</div>
+
+<!-- STEP 5 -->
+<h3>Step 5：Issuer Mint Token（/issuer → Mint）</h3>
+
+<div class="flow">
+<span class="step-num">5</span>
+<div class="flow-body">
+<b>操作：</b>Issuer 在 dashboard 輸入 holder 的地址和數量，按 Mint。<br>
+<b>實際發生的事：</b>伺服器用 issuer 私鑰簽署 <code>PrivateRWA.mint(to, amount)</code>。合約的 <code>_update</code> hook 會檢查 <code>to</code> 是否 admitted。如果 admitted → mint 成功。如果沒有 → <b>revert NotAdmitted</b>。
+</div>
+</div>
+
+<div class="box box-green">
+<b>痛點 → 解法</b><br>
+<b>痛點：</b>普通 ERC-20 的 mint 不做任何合規檢查，任何地址都能收到 token。<br>
+<b>解法：</b>我們的 token 在最底層（_update hook）就強制檢查。<b>就算是 issuer 也不能 mint 給沒 admit 的地址</b>。合規是在合約層面硬編碼的，不靠人工判斷。
+</div>
+
+<!-- STEP 6 -->
+<h3>Step 6：Holder 轉帳（/wallet → Transfer）</h3>
+
+<div class="flow">
+<span class="step-num">6</span>
+<div class="flow-body">
+<b>操作：</b>Holder 在 wallet 頁面輸入對方地址和數量，按 Transfer。<br>
+<b>實際發生的事：</b>MetaMask 簽署 <code>PrivateRWA.transfer(to, amount)</code>。合約 <code>_update</code> 檢查 <code>from</code> 和 <code>to</code> 都 admitted → 通過則轉帳成功，不通過則 <b>revert NotAdmitted(address)</b>。
+</div>
+</div>
+
+<div class="box box-red">
+<b>你之前那筆「失敗的」transfer 就是這個機制在運作！</b><br>
+你轉帳給 <code>0x26c0…</code>，但那個地址沒做過 admit。合約直接 revert 了。<br>
+<b>這不是 bug — 這是功能。</b>這正是我們要展示的核心 demo 環節：<br>
+「合規不是靠 off-chain 監控，是合約本身在擋。沒 admit 過，一毛錢都轉不出去。」
+</div>
+
+<div class="box box-green">
+<b>痛點 → 解法（總結）</b><br>
+<b>痛點：</b>ERC-3643 在鏈上做合規，但名單公開。不做 ERC-3643 則無法合規。<br>
+<b>解法：</b>我們做到了<b>跟 ERC-3643 同樣的合規效果</b>（transfer 被合約攔截），但白名單是隱私的。<br>
+<b>機構得到他們需要的一切：合規轉帳 + 投資人名單保密。</b>
+</div>
+
+<!-- ================================================================== -->
+<h2 class="page-break">第二部分：痛點深度剖析</h2>
+
+<h3>核心痛點一句話</h3>
+<div class="box box-red">
+<b>ERC-3643（T-REX）是目前 RWA token 的合規標準，但它的身份註冊表（Identity Registry）完全公開。任何人都能列舉出所有通過 KYC 的投資者地址。這對機構投資者來說是不可接受的隱私洩露。</b>
+</div>
+
+<h3>為什麼機構在意？三個真實風險</h3>
+<table>
+<tr><th>風險</th><th>具體場景</th><th>後果</th></tr>
+<tr>
+<td><b>競爭對手偵查</b></td>
+<td>對沖基金 A 發行 RWA token。基金 B 的分析師 10 秒鐘就從鏈上掃出 A 的所有 LP 地址</td>
+<td>B 知道 A 的資金來源結構，可以精準挖角 LP，或推斷 A 的策略方向</td>
+</tr>
+<tr>
+<td><b>媒體曝光</b></td>
+<td>記者用 Arkham/Nansen 將鏈上地址對應到真實身份</td>
+<td>「揭秘：XX 家族辦公室持有 5000 萬 XX 債券 token」隔天上新聞</td>
+</tr>
+<tr>
+<td><b>社會工程攻擊</b></td>
+<td>攻擊者知道某地址在高價值 RWA 白名單上 = 知道對方是高淨值個人</td>
+<td>成為釣魚攻擊、SIM swap、甚至人身安全威脅的目標</td>
+</tr>
+</table>
+
+<h3>我們的解法：同樣合規、但名單私密</h3>
+<table>
+<tr><th>面向</th><th>ERC-3643</th><th>ZK-RWA Allowlist</th></tr>
+<tr><td>投資人名單</td><td>公開在鏈上，任何人可查</td><td><b>只在 issuer 後端，鏈上只有 Merkle root hash</b></td></tr>
+<tr><td>加入成員</td><td>每人一筆公開的 IdentityRegistered 事件</td><td><b>off-chain 操作，零鏈上痕跡</b></td></tr>
+<tr><td>Transfer 合規</td><td>合約攔截未驗證地址 ✓</td><td><b>同樣合約層攔截 ✓</b></td></tr>
+<tr><td>加入方式</td><td>Issuer 直接寫入</td><td><b>Holder 自己用 ZK proof 證明（self-admit）</b></td></tr>
+<tr><td>地址 → 身份連結</td><td>直接可追溯</td><td><b>無法追溯（零知識證明保證）</b></td></tr>
+</table>
+
+<!-- ================================================================== -->
+<h2 class="page-break">第三部分：技術實現詳解</h2>
+
+<p>以下按「資料從哪裡來 → 經過哪些程式 → 最後到哪裡去」的邏輯逐一講解每個模組。</p>
+
+<h3>3.1 專案架構總覽</h3>
+<pre>
+hashkey/
+├── contracts/                    <span class="cm">← Foundry 智能合約</span>
+│   ├── src/
+│   │   ├── ComplianceGate.sol    <span class="cm">← 核心：root 管理 + ZK proof 驗證 + 准入記錄</span>
+│   │   └── PrivateRWA.sol        <span class="cm">← ERC-20 + transfer hook</span>
+│   ├── test/ComplianceGate.t.sol <span class="cm">← 12 個 Foundry 測試</span>
+│   ├── script/Deploy.s.sol       <span class="cm">← 部署腳本</span>
+│   └── lib/                      <span class="cm">← 子模組：forge-std, openzeppelin, semaphore</span>
+├── lib/
+│   ├── semaphore/
+│   │   ├── identity.ts           <span class="cm">← 瀏覽器端：產生 / 載入 / 匯出身份</span>
+│   │   ├── group.ts              <span class="cm">← 伺服器端：管理 group.json + Merkle tree</span>
+│   │   └── proof.ts              <span class="cm">← 瀏覽器端：ZK proof 生成</span>
+│   └── chain/
+│       ├── config.ts             <span class="cm">← chain ID、RPC、合約地址</span>
+│       ├── abi.ts                <span class="cm">← 合約 ABI（函數介面定義）</span>
+│       ├── browserClient.ts      <span class="cm">← 瀏覽器端：MetaMask 連接 + 讀鏈</span>
+│       └── issuerClient.ts       <span class="cm">← 伺服器端：issuer 私鑰簽章 + 送交易</span>
+├── app/
+│   ├── page.tsx                  <span class="cm">← 首頁</span>
+│   ├── join/page.tsx             <span class="cm">← 建立身份</span>
+│   ├── issuer/page.tsx           <span class="cm">← 發行方 dashboard</span>
+│   ├── admit/page.tsx            <span class="cm">← ZK proof 生成 + 送 admit tx</span>
+│   ├── wallet/page.tsx           <span class="cm">← 餘額查詢 + 轉帳</span>
+│   ├── compare/page.tsx          <span class="cm">← ERC-3643 vs 我們的對比</span>
+│   └── api/                      <span class="cm">← Next.js API routes（伺服器端）</span>
+│       ├── issuer/add-member/    <span class="cm">← 加成員到 group.json</span>
+│       ├── issuer/publish-root/  <span class="cm">← 送 updateRoot tx</span>
+│       ├── issuer/mint/          <span class="cm">← 送 mint tx</span>
+│       ├── group/root/           <span class="cm">← 回傳群組狀態</span>
+│       └── group/merkle-path/    <span class="cm">← 回傳某 commitment 的 Merkle path</span>
+└── data/group.json               <span class="cm">← 投資人名單（off-chain，永遠不上鏈）</span>
+</pre>
+
+<!-- ComplianceGate -->
+<h3>3.2 ComplianceGate.sol — 核心合約</h3>
+<p><span class="file-ref">contracts/src/ComplianceGate.sol</span>（約 110 行）</p>
+<p>這個合約是整個系統的心臟。它負責三件事：</p>
+
+<h3>功能 A：updateRoot — 儲存 Merkle root</h3>
+<pre>
+<span class="kw">function</span> <span class="fn">updateRoot</span>(uint256 newRoot) <span class="kw">external</span> onlyIssuer {
+    currentRoot = newRoot;
+    rootHistory[rootHistoryHead] = newRoot;                <span class="cm">// 存進環形緩衝區</span>
+    rootHistoryHead = (rootHistoryHead + 1) % 16;          <span class="cm">// 最多保留 16 個</span>
+    knownRoot[newRoot] = true;                             <span class="cm">// 標記為已知 root</span>
+    <span class="kw">emit</span> RootUpdated(newRoot);
+}
+</pre>
+
+<div class="box box-blue">
+<b>為什麼用環形緩衝區保留 16 個歷史 root？</b><br>
+因為 holder 可能在 root_v5 的時候產生了 proof，但 issuer 在他送出 tx 之前又更新了 root 到 v6。<br>
+如果只接受最新 root，holder 的 proof 就會失敗。保留 16 個歷史 root 給了一個寬裕的時間窗口。<br>
+<code>knownRoot[root]</code> mapping 讓 admit 函數可以快速查詢某個 root 是否合法。
+</div>
+
+<h3>功能 B：admit — ZK 驗證 + 准入記錄</h3>
+<pre>
+<span class="kw">function</span> <span class="fn">admit</span>(
+    address token,      <span class="cm">// 要 admit 到哪個 RWA token</span>
+    uint256 root,       <span class="cm">// proof 是基於哪個 Merkle root 生成的</span>
+    uint256 depth,      <span class="cm">// Merkle tree 深度</span>
+    uint256 nullifier,  <span class="cm">// 防重複使用的唯一值</span>
+    uint256[8] points   <span class="cm">// Groth16 proof（8 個橢圓曲線點）</span>
+) <span class="kw">external</span> {
+
+    <span class="cm">// 1. 基礎檢查</span>
+    <span class="kw">if</span> (!registeredToken[token]) <span class="kw">revert</span> <span class="err">TokenNotRegistered</span>();
+    <span class="kw">if</span> (!knownRoot[root])        <span class="kw">revert</span> <span class="err">UnknownRoot</span>();
+    <span class="kw">if</span> (usedNullifier[nullifier]) <span class="kw">revert</span> <span class="err">NullifierReused</span>();
+
+    <span class="cm">// 2. 計算 message hash 和 scope hash</span>
+    <span class="hl">uint256 messageHash = _hashToField(uint256(uint160(msg.sender)));</span>
+    <span class="hl">uint256 scopeHash   = _hashToField(uint256(uint160(token)));</span>
+
+    <span class="cm">// 3. 呼叫 Semaphore Verifier 做 Groth16 pairing 驗證</span>
+    bool ok = verifier.verifyProof(
+        [points[0], points[1]],                          <span class="cm">// pA</span>
+        [[points[2], points[3]], [points[4], points[5]]], <span class="cm">// pB</span>
+        [points[6], points[7]],                          <span class="cm">// pC</span>
+        <span class="hl">[root, nullifier, messageHash, scopeHash]</span>,          <span class="cm">// 公開信號</span>
+        depth
+    );
+    <span class="kw">if</span> (!ok) <span class="kw">revert</span> <span class="err">InvalidProof</span>();
+
+    <span class="cm">// 4. 記錄准入</span>
+    usedNullifier[nullifier] = true;
+    <span class="hl">admitted[token][msg.sender] = true;</span>
+    <span class="kw">emit</span> Admitted(token, msg.sender, nullifier);
+}
+</pre>
+
+<div class="box box-purple">
+<b>逐行解析重點：</b><br><br>
+<b>messageHash = _hashToField(msg.sender)</b><br>
+合約<b>自己算</b> msg.sender 的 hash，而不是從 proof 裡拿。這確保 proof 是「為我的地址」生成的。假如 Alice 的 proof 被 Bob 截獲，Bob 不能用這個 proof 去 admit — 因為合約會用 Bob 的地址算 hash，跟 Alice 的 proof 裡的 hash 不同，驗證就會失敗。<br><br>
+<b>scopeHash = _hashToField(token)</b><br>
+scope 綁定到 token 地址。同一個 identity 可以 admit 到 token A 和 token B，因為 scope 不同，nullifier 也不同。<br><br>
+<b>_hashToField：</b><code>keccak256(value) >> 8</code><br>
+把 256-bit 值縮到 ~248 bit，讓它落在 BN254 曲線的標量場（scalar field）內。這跟 Semaphore 合約用的是同一個函數，確保鏈上鏈下的 hash 一致。<br><br>
+<b>verifier.verifyProof 內部</b><br>
+呼叫 EIP-196/197 的 bn254 precompiles（地址 0x06、0x07、0x08），執行橢圓曲線配對運算。數學上驗證 Groth16 零知識證明的正確性。約消耗 300K-500K gas。
+</div>
+
+<h3>功能 C：isAdmitted — 查詢某地址是否已准入</h3>
+<pre>
+<span class="kw">function</span> <span class="fn">isAdmitted</span>(address token, address holder) <span class="kw">external view returns</span> (bool) {
+    <span class="kw">return</span> admitted[token][holder];
+}
+</pre>
+<p>就是一個 mapping lookup。被 PrivateRWA 的 <code>_update</code> 每次 transfer 都會呼叫。<b>gas 極低</b>（~2600 gas 的 SLOAD）。</p>
+
+<!-- PrivateRWA -->
+<h3 class="page-break">3.3 PrivateRWA.sol — 合規 ERC-20</h3>
+<p><span class="file-ref">contracts/src/PrivateRWA.sol</span>（約 45 行）</p>
+<pre>
+<span class="kw">contract</span> PrivateRWA <span class="kw">is</span> ERC20 {
+    ComplianceGate <span class="kw">public immutable</span> gate;
+
+    <span class="kw">function</span> <span class="fn">_update</span>(address from, address to, uint256 value)
+        <span class="kw">internal override</span>
+    {
+        <span class="cm">// mint 時 from == address(0)，跳過 sender 檢查</span>
+        <span class="kw">if</span> (from != address(0) && !gate.isAdmitted(address(this), from))
+            <span class="kw">revert</span> <span class="err">NotAdmitted</span>(from);
+
+        <span class="cm">// burn 時 to == address(0)，跳過 recipient 檢查</span>
+        <span class="kw">if</span> (to != address(0) && !gate.isAdmitted(address(this), to))
+            <span class="kw">revert</span> <span class="err">NotAdmitted</span>(to);
+
+        <span class="kw">super</span>._update(from, to, value);
+    }
+}
+</pre>
+
+<div class="box box-blue">
+<b>為什麼用 _update 而不是 _beforeTokenTransfer？</b><br>
+OpenZeppelin v5 把所有 token 狀態變更統一收歸到 <code>_update</code>。這個 hook 涵蓋 mint、burn、transfer 三種操作。
+在這裡做檢查，代表<b>無論什麼途徑移動 token，都必須通過合規檢查</b>。沒有任何繞過的方式。
+</div>
+
+<!-- Identity -->
+<h3>3.4 identity.ts — 瀏覽器端身份管理</h3>
+<p><span class="file-ref">lib/semaphore/identity.ts</span></p>
+<pre>
+<span class="kw">import</span> { Identity } <span class="kw">from</span> <span class="str">"@semaphore-protocol/identity"</span>;
+
+<span class="kw">export function</span> <span class="fn">createIdentity</span>(): Identity {
+    <span class="kw">const</span> id = <span class="kw">new</span> Identity();               <span class="cm">// 隨機產生 trapdoor + nullifier</span>
+    localStorage.setItem(KEY, id.export()); <span class="cm">// 序列化存入 localStorage</span>
+    <span class="kw">return</span> id;
+}
+
+<span class="kw">export function</span> <span class="fn">loadIdentity</span>(): Identity | null {
+    <span class="kw">const</span> raw = localStorage.getItem(KEY);
+    <span class="kw">if</span> (!raw) <span class="kw">return null</span>;
+    <span class="kw">return</span> Identity.import(raw);            <span class="cm">// 反序列化</span>
+}
+</pre>
+
+<div class="box box-amber">
+<b>Identity 裡面有什麼？</b><br>
+<code>new Identity()</code> 會產生兩個隨機的 256-bit 數字：<br>
+• <b>trapdoor</b>：用於計算 commitment = Poseidon(trapdoor, nullifier)<br>
+• <b>nullifier</b>：用於產生 proof 時的 nullifier hash（防重複）<br>
+<br>
+<code>id.commitment</code> = Poseidon(trapdoor, nullifier) — 這就是你複製給 issuer 的那串數字。<br>
+<b>只有同時知道 trapdoor 和 nullifier 才能生成有效的 ZK proof。</b>
+</div>
+
+<!-- Group -->
+<h3>3.5 group.ts — 伺服器端群組管理</h3>
+<p><span class="file-ref">lib/semaphore/group.ts</span>（帶 <code>"server-only"</code> 標記，確保不會被打包到瀏覽器 bundle）</p>
+
+<pre>
+<span class="cm">// 把 commitment 字串陣列建成 Semaphore Group（Merkle tree）</span>
+<span class="kw">function</span> <span class="fn">toGroup</span>(members: string[]): Group {
+    <span class="kw">const</span> g = <span class="kw">new</span> Group();
+    <span class="kw">for</span> (<span class="kw">const</span> m <span class="kw">of</span> members) g.addMember(BigInt(m));
+    <span class="kw">return</span> g;
+}
+
+<span class="cm">// 新增成員 → 更新 group.json → 回傳新 root</span>
+<span class="kw">export async function</span> <span class="fn">addMember</span>(commitment): Promise {
+    file.members.push(commitment);
+    <span class="kw">await</span> writeFile(file);
+    <span class="kw">const</span> group = toGroup(file.members);
+    <span class="kw">return</span> { root: group.root.toString(), size: group.size };
+}
+
+<span class="cm">// 為特定成員產生 Merkle path（給瀏覽器端做 proof 用）</span>
+<span class="kw">export async function</span> <span class="fn">merkleProofFor</span>(commitment) {
+    <span class="kw">const</span> proof = group.generateMerkleProof(index);
+    <span class="kw">return</span> { index, root, siblings, leaf };
+}
+</pre>
+
+<div class="box box-blue">
+<b>group.json 長什麼樣？</b>
+<pre style="background:#f8fafc;color:#1e293b;font-size:9pt">
+{
+  "members": [
+    "802133776971550962493995916695128230747828237864..."
+  ],
+  "publishedRoot": "802133776971550962493995916695128230747828237864..."
+}
+</pre>
+<b>就是一個 commitment 陣列 + 最近一次發布的 root。</b>這個檔案只存在 issuer 的伺服器上。
+</div>
+
+<!-- Proof -->
+<h3>3.6 proof.ts — 瀏覽器端 ZK Proof 生成</h3>
+<p><span class="file-ref">lib/semaphore/proof.ts</span></p>
+
+<pre>
+<span class="kw">export async function</span> <span class="fn">generateAdmissionProof</span>(
+    identity: Identity,       <span class="cm">// 從 localStorage 載入的密鑰</span>
+    merkleProofInput,         <span class="cm">// 從 /api/group/merkle-path 拿到的 path</span>
+    holderAddress,            <span class="cm">// MetaMask 連接的錢包地址</span>
+    tokenAddress              <span class="cm">// 要 admit 的 token 合約地址</span>
+): Promise&lt;AdmissionProof&gt; {
+
+    <span class="kw">const</span> message = BigInt(holderAddress);  <span class="cm">// 綁定到錢包</span>
+    <span class="kw">const</span> scope   = BigInt(tokenAddress);   <span class="cm">// 綁定到 token</span>
+
+    <span class="cm">// Semaphore SDK 內部：</span>
+    <span class="cm">// 1. 載入 .wasm 和 .zkey artifacts（Groth16 電路編譯後的檔案）</span>
+    <span class="cm">// 2. 用 snarkjs 在 WASM 裡執行 Groth16 proving</span>
+    <span class="cm">// 3. 約 3 秒完成</span>
+    <span class="kw">const</span> proof = <span class="kw">await</span> generateProof(identity, merkleProof, message, scope);
+
+    <span class="kw">return</span> {
+        root: proof.merkleTreeRoot,
+        depth: proof.merkleTreeDepth,
+        nullifier: proof.nullifier,
+        points: proof.points,       <span class="cm">// 8 個 BN254 曲線上的點</span>
+    };
+}
+</pre>
+
+<div class="box box-purple">
+<b>proof.points 是什麼？</b><br>
+Groth16 proof 由三個橢圓曲線點組成：pA (2 coords), pB (4 coords), pC (2 coords) = 8 個數字。<br>
+合約把它們傳給 SemaphoreVerifier，verifier 用 EIP-196/197 precompile 做配對運算（bilinear pairing）。<br>
+如果配對結果正確 → proof 有效 → 返回 true。數學上偽造這個 proof 等同於破解離散對數問題。
+</div>
+
+<!-- API routes -->
+<h3>3.7 API Routes — 前後端橋樑</h3>
+
+<table>
+<tr><th>路由</th><th>做什麼</th><th>核心邏輯</th></tr>
+<tr>
+<td><code>POST /api/issuer/add-member</code></td>
+<td>加 commitment 到 group.json</td>
+<td>呼叫 <code>addMember(commitment)</code>，寫檔案，回傳新 root</td>
+</tr>
+<tr>
+<td><code>POST /api/issuer/publish-root</code></td>
+<td>把 root 發布到鏈上</td>
+<td>讀 group 的最新 root → 用 issuer 私鑰簽署 <code>updateRoot(root)</code> → 等 tx 確認 → 更新 publishedRoot</td>
+</tr>
+<tr>
+<td><code>POST /api/issuer/mint</code></td>
+<td>Mint token</td>
+<td>用 issuer 私鑰簽署 <code>PrivateRWA.mint(to, amount)</code></td>
+</tr>
+<tr>
+<td><code>GET /api/group/root</code></td>
+<td>回傳群組狀態</td>
+<td>讀 group.json，建 Merkle tree，回傳 size / root / publishedRoot</td>
+</tr>
+<tr>
+<td><code>GET /api/group/merkle-path</code></td>
+<td>回傳某 commitment 的 Merkle path</td>
+<td>建 tree → 找到 index → <code>group.generateMerkleProof(index)</code> → 回傳 siblings</td>
+</tr>
+</table>
+
+<!-- Deploy flow -->
+<h3 class="page-break">3.8 部署流程</h3>
+<p><span class="file-ref">contracts/script/Deploy.s.sol</span></p>
+<pre>
+<span class="cm">// 部署順序（一筆交易內完成）：</span>
+1. 部署 <span class="fn">SemaphoreVerifier</span>      <span class="cm">← Semaphore 官方的 Groth16 verifier（bn254 pairing）</span>
+2. 部署 <span class="fn">ComplianceGate</span>(verifier, issuer)  <span class="cm">← 指向 verifier + issuer 地址</span>
+3. 部署 <span class="fn">PrivateRWA</span>("HKGB30", gate, issuer) <span class="cm">← 指向 gate + issuer</span>
+4. 呼叫 gate.<span class="fn">registerToken</span>(rwa)    <span class="cm">← 把 token 註冊到 gate</span>
+</pre>
+
+<div class="box box-blue">
+<b>你實際跑的部署結果：</b><br>
+SemaphoreVerifier: <code>0xaF59f290E6A4e5294E69C2eC1e84618ad2d62D1e</code><br>
+ComplianceGate: <code>0x920EEDB0A5A6F7766c4bB134ABaF8d855527cB11</code><br>
+PrivateRWA: <code>0xE2453101d1f34EA5D92195DE0056c200A15AaE8F</code><br>
+Issuer: <code>0x4EC7a00D26d392e1B29e6b7fA0199D5849A1459d</code><br>
+部署在 HashKey Chain Testnet (chainId 133)。
+</div>
+
+<!-- Security -->
+<h3>3.9 安全機制總覽</h3>
+<table>
+<tr><th>攻擊向量</th><th>防禦</th><th>實現位置</th></tr>
+<tr><td>偽造 proof（不在名單上的人試圖 admit）</td><td>Groth16 數學保證無法偽造</td><td>SemaphoreVerifier</td></tr>
+<tr><td>重放攻擊（同一人用同一個 proof admit 兩次）</td><td><code>usedNullifier[nullifier] = true</code></td><td>ComplianceGate L82, L99</td></tr>
+<tr><td>冒名攻擊（B 拿 A 的 proof 去 admit）</td><td>合約自算 <code>hash(msg.sender)</code> 比對</td><td>ComplianceGate L87</td></tr>
+<tr><td>跨 token 攻擊（用 token A 的 proof admit 到 token B）</td><td>scope = token 地址，nullifier 不同</td><td>ComplianceGate L88</td></tr>
+<tr><td>偽造 root（用假的 root 生成 proof）</td><td><code>knownRoot[root]</code> 檢查</td><td>ComplianceGate L81</td></tr>
+<tr><td>未授權 mint</td><td><code>onlyIssuer</code> modifier</td><td>PrivateRWA L30</td></tr>
+<tr><td>轉給未 admit 的人</td><td><code>_update</code> hook revert</td><td>PrivateRWA L38-46</td></tr>
+</table>
+
+<!-- Tech stack -->
+<h3>3.10 技術棧</h3>
+<table>
+<tr><th>層</th><th>技術</th><th>為什麼選它</th></tr>
+<tr><td>零知識證明</td><td>Semaphore v4.14（Groth16 + bn254）</td><td>經審計、有瀏覽器 WASM proving、零自訂電路</td></tr>
+<tr><td>智能合約</td><td>Solidity 0.8.24 + Foundry</td><td>產業標準 + 最快的測試框架</td></tr>
+<tr><td>ERC-20 基礎</td><td>OpenZeppelin v5.6</td><td>最廣泛使用的合約庫，_update hook 設計最乾淨</td></tr>
+<tr><td>前端</td><td>Next.js 14 App Router + TypeScript</td><td>SSR + API routes 一體化，不需要獨立後端</td></tr>
+<tr><td>鏈互動</td><td>viem + window.ethereum</td><td>型別安全、輕量、不需 wagmi 全家桶</td></tr>
+<tr><td>目標鏈</td><td>HashKey Chain Testnet (133)</td><td>比賽要求，OP-Stack L2 支持 bn254 precompiles</td></tr>
+</table>
+
+<!-- Data flow summary -->
+<h3 class="page-break">3.11 完整資料流圖</h3>
+<pre>
+<span class="cm">┌─────────────── 投資者的瀏覽器 ───────────────┐</span>
+│                                                 │
+│  <span class="fn">new Identity()</span>                                  │
+│  → trapdoor = random_256bit                     │
+│  → nullifier = random_256bit                    │
+│  → commitment = Poseidon(trapdoor, nullifier)   │
+│  → 存入 <span class="str">localStorage</span>                           │
+│  → 顯示 commitment 供複製                       │
+│                                                 │
+<span class="cm">└───────────── commitment ──────────────────────┘</span>
+                    │
+                    │ 投資者手動複製給 issuer
+                    ▼
+<span class="cm">┌──────────── Issuer 的伺服器 ──────────────────┐</span>
+│                                                 │
+│  <span class="fn">addMember</span>(commitment)                         │
+│  → group.json: members.push(commitment)         │
+│  → Group: addMember → 重建 Merkle tree          │
+│  → root = tree.root                             │
+│                                                 │
+│  <span class="fn">publishRoot</span>()                                  │
+│  → issuer 私鑰簽署 tx                           │
+│  → ComplianceGate.updateRoot(root)              │
+│                                                 │
+│  <span class="fn">merkleProofFor</span>(commitment)                     │
+│  → 找到 index → generateMerkleProof(index)      │
+│  → 回傳 { index, root, siblings, leaf }         │
+│                                                 │
+<span class="cm">└───────────── merkle path ─────────────────────┘</span>
+                    │
+                    │ API response
+                    ▼
+<span class="cm">┌─────────────── 投資者的瀏覽器 ───────────────┐</span>
+│                                                 │
+│  <span class="fn">generateProof</span>(identity, merklePath,            │
+│                holderAddress, tokenAddress)      │
+│                                                 │
+│  → snarkjs WASM: ~3 秒 Groth16 proving         │
+│  → 輸出: root, nullifier, points[8]             │
+│                                                 │
+│  → MetaMask 簽署 tx                             │
+│  → ComplianceGate.<span class="fn">admit</span>(token, root, depth,     │
+│                        nullifier, points)        │
+│                                                 │
+<span class="cm">└────────────── admit tx ───────────────────────┘</span>
+                    │
+                    │ 鏈上交易
+                    ▼
+<span class="cm">┌────────────── HashKey Chain ──────────────────┐</span>
+│                                                 │
+│  ComplianceGate.admit():                        │
+│  → 檢查 root ∈ knownRoot              ✓        │
+│  → 檢查 nullifier 沒用過              ✓        │
+│  → hash(msg.sender) 比對 proof         ✓        │
+│  → SemaphoreVerifier.verifyProof()     ✓        │
+│    （bn254 pairing @ precompile 0x08）           │
+│  → <span class="str">admitted[token][holder] = true</span>               │
+│  → emit Admitted(token, holder, nullifier)      │
+│                                                 │
+│  之後每次 transfer:                              │
+│  PrivateRWA._update():                          │
+│  → gate.isAdmitted(from) ✓                      │
+│  → gate.isAdmitted(to)   ✓ or ✗                │
+│  → ✓ → 轉帳成功                                 │
+│  → ✗ → <span class="err">revert NotAdmitted(to)</span>                  │
+│                                                 │
+<span class="cm">└──────────────────────────────────────────────┘</span>
+</pre>
+
+<div class="box box-green" style="margin-top: 24px">
+<b>現在你應該完全理解了：</b><br><br>
+① <b>痛點</b>：ERC-3643 把投資人名單公開在鏈上，機構不敢用。<br>
+② <b>解法</b>：名單存 off-chain，鏈上只有 Merkle root hash。投資者用 ZK proof 自己 admit。<br>
+③ <b>合規</b>：transfer hook 在合約層面強制執行，沒 admit 就轉不了帳。<br>
+④ <b>隱私</b>：外部能看到誰 admitted，但不知道群組裡還有誰、也不知道地址對應哪個 commitment。<br>
+⑤ <b>技術</b>：零自訂 ZK 電路，用 Semaphore v4 當黑盒。兩個合約加起來 < 160 行。
+</div>
+
+<div class="footer">
+ZK-RWA Allowlist · Technical Deep Dive · Apr 2026<br>
+用瀏覽器打開此檔案，Ctrl+P → 存為 PDF
+</div>
+
+</body>
+</html>

@@ -1,25 +1,69 @@
 /**
- * Issuer-side group store. The full allowlist lives here as a JSON file — only the
- * Merkle root ever hits chain. All mutations go through this module so the on-disk
- * file and the in-memory Group stay consistent.
+ * Issuer-side group store. The full allowlist lives here — only the Merkle root
+ * ever hits chain.
  *
- * Runs on the Next.js Node runtime only (reads/writes the filesystem).
+ * Storage backend:
+ *   - If UPSTASH_REDIS_REST_URL is set → Upstash Redis (Vercel production)
+ *   - Otherwise → local data/group.json (local dev)
+ *
+ * All mutations go through this module so the backing store and the in-memory
+ * Semaphore Group stay consistent.
  */
 import "server-only";
 import { Group } from "@semaphore-protocol/group";
-import fs from "node:fs/promises";
-import path from "node:path";
-
-const GROUP_FILE = path.join(process.cwd(), "data", "group.json");
 
 type GroupFile = {
-  members: string[]; // identity commitments as decimal strings
-  publishedRoot: string | null; // last root published on-chain, for UI display
+  members: string[];
+  publishedRoot: string | null;
 };
 
-async function readFile(): Promise<GroupFile> {
+const REDIS_KEY = "zk-rwa:group";
+
+// ── Storage backend abstraction ──────────────────────────────────────────
+
+async function readStore(): Promise<GroupFile> {
+  if (process.env.UPSTASH_REDIS_REST_URL) {
+    return readRedis();
+  }
+  return readLocalFile();
+}
+
+async function writeStore(data: GroupFile): Promise<void> {
+  if (process.env.UPSTASH_REDIS_REST_URL) {
+    return writeRedis(data);
+  }
+  return writeLocalFile(data);
+}
+
+// ── Upstash Redis backend ────────────────────────────────────────────────
+
+async function getRedis() {
+  const { Redis } = await import("@upstash/redis");
+  return new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL!,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+  });
+}
+
+async function readRedis(): Promise<GroupFile> {
+  const redis = await getRedis();
+  const data = await redis.get<GroupFile>(REDIS_KEY);
+  return data ?? { members: [], publishedRoot: null };
+}
+
+async function writeRedis(data: GroupFile): Promise<void> {
+  const redis = await getRedis();
+  await redis.set(REDIS_KEY, data);
+}
+
+// ── Local filesystem backend (dev only) ──────────────────────────────────
+
+async function readLocalFile(): Promise<GroupFile> {
+  const fs = await import("node:fs/promises");
+  const path = await import("node:path");
+  const filePath = path.join(process.cwd(), "data", "group.json");
   try {
-    const raw = await fs.readFile(GROUP_FILE, "utf8");
+    const raw = await fs.readFile(filePath, "utf8");
     return JSON.parse(raw) as GroupFile;
   } catch (e: unknown) {
     if ((e as NodeJS.ErrnoException).code === "ENOENT") {
@@ -29,10 +73,15 @@ async function readFile(): Promise<GroupFile> {
   }
 }
 
-async function writeFile(file: GroupFile): Promise<void> {
-  await fs.mkdir(path.dirname(GROUP_FILE), { recursive: true });
-  await fs.writeFile(GROUP_FILE, JSON.stringify(file, null, 2));
+async function writeLocalFile(data: GroupFile): Promise<void> {
+  const fs = await import("node:fs/promises");
+  const path = await import("node:path");
+  const filePath = path.join(process.cwd(), "data", "group.json");
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  await fs.writeFile(filePath, JSON.stringify(data, null, 2));
 }
+
+// ── Semaphore group helpers ──────────────────────────────────────────────
 
 function toGroup(members: string[]): Group {
   const g = new Group();
@@ -40,8 +89,10 @@ function toGroup(members: string[]): Group {
   return g;
 }
 
+// ── Public API (unchanged interface) ─────────────────────────────────────
+
 export async function getGroupState() {
-  const file = await readFile();
+  const file = await readStore();
   const group = toGroup(file.members);
   return {
     members: file.members,
@@ -52,29 +103,24 @@ export async function getGroupState() {
 }
 
 export async function addMember(commitment: string): Promise<{ root: string; size: number }> {
-  const file = await readFile();
+  const file = await readStore();
   if (file.members.includes(commitment)) {
     throw new Error("member already in group");
   }
   file.members.push(commitment);
-  await writeFile(file);
+  await writeStore(file);
   const group = toGroup(file.members);
   return { root: group.root.toString(), size: group.size };
 }
 
 export async function markRootPublished(root: string): Promise<void> {
-  const file = await readFile();
+  const file = await readStore();
   file.publishedRoot = root;
-  await writeFile(file);
+  await writeStore(file);
 }
 
-/**
- * Build a Merkle proof for a single member — needed when the holder's browser
- * generates a Semaphore proof, since `generateProof` can accept either a full
- * Group or just a MerkleProof (which is much smaller to ship over the wire).
- */
 export async function merkleProofFor(commitment: string) {
-  const file = await readFile();
+  const file = await readStore();
   const group = toGroup(file.members);
   const index = file.members.indexOf(commitment);
   if (index === -1) throw new Error("commitment not in group");
@@ -85,4 +131,14 @@ export async function merkleProofFor(commitment: string) {
     siblings: proof.siblings.map((s) => s.toString()),
     leaf: proof.leaf.toString(),
   };
+}
+
+/**
+ * Seed Redis with data from local group.json. Call once after first Vercel deploy
+ * via: POST /api/issuer/seed-redis
+ */
+export async function seedFromLocal(): Promise<void> {
+  const local = await readLocalFile();
+  if (local.members.length === 0) return;
+  await writeRedis(local);
 }

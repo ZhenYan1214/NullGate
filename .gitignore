@@ -12,3 +12,7 @@ contracts/cache/
 contracts/broadcast/
 
 scripts/out/
+
+# Media and Documents
+*.png
+*.pdf

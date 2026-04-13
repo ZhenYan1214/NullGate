@@ -38,7 +38,12 @@
       "Bash(curl -sS --max-time 10 -X POST https://testnet.hsk.xyz -H \"Content-Type: application/json\" -d '{\"jsonrpc\":\"2.0\",\"method\":\"eth_chainId\",\"params\":[],\"id\":1}')",
       "Bash(npx tsc:*)",
       "Bash(echo \"exit: $?\")",
-      "Bash(npx next:*)"
+      "Bash(npx next:*)",
+      "Bash(npm run:*)",
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(python3:*)",
+      "Bash(ls:*)"
     ]
   }
 }

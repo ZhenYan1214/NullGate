@@ -5,7 +5,7 @@
  */
 "use client";
 import { createPublicClient, createWalletClient, custom, http, type Address } from "viem";
-import { hashkeyTestnet, RPC_URL } from "./config";
+import { hashkeyTestnet, CHAIN_ID, RPC_URL } from "./config";
 
 declare global {
   interface Window {
@@ -23,11 +23,11 @@ export async function connectWallet(): Promise<{ address: Address }> {
   }
   const accounts: string[] = await window.ethereum.request({ method: "eth_requestAccounts" });
   if (!accounts.length) throw new Error("No account authorised");
-  // Prompt user to switch/add HashKey testnet if not on it already.
+  const hexChainId = `0x${CHAIN_ID.toString(16)}` as const;
   try {
     await window.ethereum.request({
       method: "wallet_switchEthereumChain",
-      params: [{ chainId: "0x85" }],
+      params: [{ chainId: hexChainId }],
     });
   } catch (e: any) {
     if (e?.code === 4902) {
@@ -35,11 +35,11 @@ export async function connectWallet(): Promise<{ address: Address }> {
         method: "wallet_addEthereumChain",
         params: [
           {
-            chainId: "0x85",
-            chainName: "HashKey Chain Testnet",
-            nativeCurrency: { name: "HashKey", symbol: "HSK", decimals: 18 },
-            rpcUrls: ["https://testnet.hsk.xyz"],
-            blockExplorerUrls: ["https://hashkeychain-testnet-explorer.alt.technology"],
+            chainId: hexChainId,
+            chainName: hashkeyTestnet.name,
+            nativeCurrency: hashkeyTestnet.nativeCurrency,
+            rpcUrls: hashkeyTestnet.rpcUrls.default.http,
+            blockExplorerUrls: [hashkeyTestnet.blockExplorers.default.url],
           },
         ],
       });

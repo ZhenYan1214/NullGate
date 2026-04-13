@@ -12,8 +12,6 @@ contract ComplianceGate {
     error UnknownRoot();
     error NullifierReused();
     error InvalidProof();
-    error WrongScope();
-    error WrongMessage();
     error TokenNotRegistered();
     error TokenAlreadyRegistered();
     error DepthOutOfRange();

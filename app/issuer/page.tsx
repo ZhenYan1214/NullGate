@@ -29,6 +29,7 @@ export default function IssuerPage() {
 
   async function refresh() {
     const r = await fetch("/api/group/root");
+    if (!r.ok) return;
     setState(await r.json());
   }
 
