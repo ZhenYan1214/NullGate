@@ -14,5 +14,6 @@ contracts/broadcast/
 scripts/out/
 
 # Media and Documents
-*.png
 *.pdf
+# Exclude loose PNGs at root but keep the asset/ directory
+/*.png
