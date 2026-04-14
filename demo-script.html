@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ZK-RWA Allowlist — 3-Minute Demo Script</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d1117;
+    color: #f0f6fc;
+    font-family: 'Segoe UI', -apple-system, sans-serif;
+    padding: 56px;
+    line-height: 1.7;
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  h1 { font-size: 22px; font-weight: 700; margin-bottom: 6px; letter-spacing: -.02em; }
+  .meta { font-size: 12px; color: #7d8590; margin-bottom: 48px; }
+
+  .note {
+    background: #1c1506;
+    border: 1px solid #d2992240;
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 12px;
+    color: #d29922;
+    margin-bottom: 40px;
+    line-height: 1.6;
+  }
+
+  .segment {
+    margin-bottom: 40px;
+    border-left: 3px solid #30363d;
+    padding-left: 24px;
+  }
+  .segment:hover { border-left-color: #388bfd; }
+
+  .timestamp {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: #388bfd;
+    margin-bottom: 6px;
+  }
+
+  .segment-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #f0f6fc;
+    margin-bottom: 12px;
+  }
+
+  .screen {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 11.5px;
+    color: #8b949e;
+    margin-bottom: 14px;
+    font-family: 'Consolas', monospace;
+  }
+  .screen::before {
+    content: "SCREEN  ";
+    color: #6e40c9;
+    font-weight: 700;
+    letter-spacing: .08em;
+  }
+
+  .say {
+    font-size: 15px;
+    color: #f0f6fc;
+    line-height: 1.85;
+    border-left: 3px solid #2ea043;
+    padding-left: 16px;
+    font-style: normal;
+  }
+
+  .pause {
+    display: inline-block;
+    background: #21262d;
+    border: 1px solid #30363d;
+    border-radius: 4px;
+    font-size: 10px;
+    color: #7d8590;
+    padding: 1px 7px;
+    margin: 0 2px;
+    font-family: monospace;
+    vertical-align: middle;
+    font-style: normal;
+  }
+
+  em { color: #d29922; font-style: normal; }
+  strong { color: #56d364; }
+
+  .word-count {
+    float: right;
+    font-size: 10px;
+    color: #484f58;
+    font-family: monospace;
+  }
+
+  .divider {
+    border: none;
+    border-top: 1px solid #21262d;
+    margin: 48px 0;
+  }
+
+  .total {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 20px 24px;
+    font-size: 12px;
+    color: #8b949e;
+    margin-top: 48px;
+  }
+  .total strong { color: #f0f6fc; font-size: 14px; display: block; margin-bottom: 8px; }
+
+  @media print {
+    body { background: #fff; color: #111; padding: 32px; }
+    .say { color: #111; border-color: #2ea043; }
+    .screen { background: #f6f8fa; color: #444; border-color: #d0d7de; }
+    .note { background: #fffbeb; border-color: #d29922; color: #92400e; }
+  }
+</style>
+</head>
+<body>
+
+<h1>ZK-RWA Allowlist — 3-Minute Demo Script</h1>
+<p class="meta">HashKey On-Chain Horizon Hackathon &nbsp;·&nbsp; ZKID Track &nbsp;·&nbsp; ~380 words &nbsp;·&nbsp; Speak at a calm, clear pace</p>
+
+<div class="note">
+  <strong>Before you hit record:</strong><br>
+  Have these tabs open and ready: <code>/compare</code> → <code>/issuer</code> → <code>/join</code> → <code>/issuer</code> (add member) → <code>/admit</code> → <code>/wallet</code> → HashKey testnet explorer (Admitted event).<br>
+  Pre-generate the identity on <code>/join</code> so the commitment is ready to copy. The proof on <code>/admit</code> takes ~3s — let it run naturally, don't cut it.
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="segment">
+  <div class="timestamp">0:00 – 0:20 &nbsp;·&nbsp; Hook</div>
+  <div class="segment-title">The Problem <span class="word-count">~50 words</span></div>
+  <div class="screen">Open /compare page — show ERC-3643 code block with isVerified calls</div>
+  <p class="say">
+    Every institutional RWA token today uses ERC‑3643.
+    It enforces compliance — but it does something else too:
+    it puts your <em>entire investor list on-chain, in public, forever.</em>
+    <span class="pause">point at screen</span>
+    Anyone can call <code>isVerified</code> and enumerate every whitelisted address in the fund.
+    For family offices and institutional LPs, <strong>this is a non-starter.</strong>
+  </p>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="segment">
+  <div class="timestamp">0:20 – 0:40 &nbsp;·&nbsp; Solution in one sentence</div>
+  <div class="segment-title">The Fix <span class="word-count">~40 words</span></div>
+  <div class="screen">Scroll to right side of /compare — show ZK-RWA column: only root is public</div>
+  <p class="say">
+    ZK-RWA Allowlist fixes this with zero-knowledge proofs.
+    The investor list <strong>stays off-chain.</strong>
+    Only a 32-byte Merkle root hits the chain.
+    Holders prove they're in the group — without revealing <em>which member they are.</em>
+    Compliance stays on-chain. The LP list stays private.
+  </p>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="segment">
+  <div class="timestamp">0:40 – 1:05 &nbsp;·&nbsp; Issuer Dashboard</div>
+  <div class="segment-title">What the issuer sees <span class="word-count">~50 words</span></div>
+  <div class="screen">Navigate to /issuer — show stat tiles: Group size, On-chain root, Total supply</div>
+  <p class="say">
+    This is the issuer dashboard.
+    I can see the group has <em>three members</em> and the current Merkle root on-chain.
+    <span class="pause">point at members list</span>
+    These commitments are visible here — but <strong>they are never published on-chain.</strong>
+    Not in storage, not in events.
+    An observer on HashKey Chain sees only this root —
+    <em>a single hash that reveals nothing about who's behind it.</em>
+  </p>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="segment">
+  <div class="timestamp">1:05 – 1:30 &nbsp;·&nbsp; New Holder Joins</div>
+  <div class="segment-title">Identity creation + issuer adds member <span class="word-count">~55 words</span></div>
+  <div class="screen">Navigate to /join — click "Create identity" — commitment appears — copy it</div>
+  <p class="say">
+    A new investor visits the join page.
+    One click — a Semaphore identity is generated <em>entirely in their browser.</em>
+    The private key never leaves their device.
+    <span class="pause">copy commitment</span>
+    They share only this commitment — a hash — with the issuer.
+  </p>
+  <br>
+  <div class="screen">Navigate to /issuer — paste commitment — click "Add to off-chain group" — click "Publish current root on-chain" — wait for tx</div>
+  <p class="say">
+    The issuer pastes the commitment and adds them to the group.
+    <span class="pause">click publish</span>
+    One transaction — the new Merkle root is on-chain.
+    <strong>Four members in the group. Nobody can enumerate them.</strong>
+  </p>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="segment">
+  <div class="timestamp">1:30 – 2:05 &nbsp;·&nbsp; Self-Admission</div>
+  <div class="segment-title">ZK proof — the core mechanic <span class="word-count">~65 words</span></div>
+  <div class="screen">Navigate to /admit — connect wallet — click "Generate proof" — let spinner run ~3s</div>
+  <p class="say">
+    Now the investor self-admits.
+    <span class="pause">click generate</span>
+    The browser is generating a Groth16 proof right now — using WebAssembly, no server involved.
+    This proves they belong to the group — <em>without revealing which member they are.</em>
+    <span class="pause">proof finishes</span>
+    Done. We submit the transaction.
+  </p>
+  <br>
+  <div class="screen">Wait for tx confirmation — then open HashKey testnet explorer — show the Admitted event</div>
+  <p class="say">
+    On the explorer — here's the <code>Admitted</code> event.
+    Token address. Holder address. A nullifier hash.
+    <span class="pause">point at event</span>
+    <strong>No commitment. No group index. No link to any identity in the off-chain list.</strong>
+    A blockchain analyst looking at this learns nothing about who approved this investor.
+  </p>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="segment">
+  <div class="timestamp">2:05 – 2:40 &nbsp;·&nbsp; Transfer Demo</div>
+  <div class="segment-title">The money shot — compliance enforced on-chain <span class="word-count">~60 words</span></div>
+  <div class="screen">Navigate to /wallet — show token balance after issuer mints</div>
+  <p class="say">
+    The issuer mints tokens to our admitted holder.
+    Balance shows up — standard ERC-20.
+    <span class="pause">enter recipient address of another admitted wallet</span>
+    Transfer to a second admitted address —
+  </p>
+  <br>
+  <div class="screen">Submit transfer to admitted address — show success</div>
+  <p class="say">
+    — succeeds.
+    <span class="pause">now enter a non-admitted address</span>
+    Now let's try sending to an address that was <em>never admitted to this token.</em>
+  </p>
+  <br>
+  <div class="screen">Submit transfer to non-admitted address — show revert with NotAdmitted error</div>
+  <p class="say">
+    <strong>Reverts. <code>NotAdmitted</code>.</strong>
+    Enforced by the ERC-20 <code>_update</code> hook — not by a server, not by a monitor.
+    The compliance is real, and it's on-chain.
+  </p>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="segment">
+  <div class="timestamp">2:40 – 3:00 &nbsp;·&nbsp; Close</div>
+  <div class="segment-title">Why this matters <span class="word-count">~45 words</span></div>
+  <div class="screen">Return to /compare or landing page — show the comparison table</div>
+  <p class="say">
+    Zero custom circuits. Audited Semaphore v4. BN254 pairing precompiles — verified live on HashKey Chain.
+    <span class="pause">brief pause</span>
+    ERC-3643 enforces compliance.
+    ZK-RWA Allowlist enforces compliance — <em>and keeps the LP list private.</em>
+    That's the primitive institutional RWA has been missing.
+    <strong>Thank you.</strong>
+  </p>
+</div>
+
+
+<hr class="divider">
+
+<div class="total">
+  <strong>Recording checklist</strong>
+  1. Record at 1920×1080, browser zoom at 90% so everything is readable.<br>
+  2. Mute all notifications before recording.<br>
+  3. Pre-connect your wallet on /admit so you don't waste time during the proof section.<br>
+  4. The proof generation (~3s) is intentional — let it run, it shows the real tech.<br>
+  5. On the explorer, hover over the nullifier hash and say "This is all anyone can see."<br>
+  6. Keep a steady pace — 3 minutes goes faster than it feels.<br>
+  7. The <code>NotAdmitted</code> revert at 2:30 is your strongest visual — pause on it for 2 seconds.
+</div>
+
+</body>
+</html>

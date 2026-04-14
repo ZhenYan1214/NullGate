@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { Fraunces, Manrope } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
+import Image from "next/image";
 import { Nav } from "./components/Nav";
+import brandLogo from "@/asset/LOGO3.png";
 
 const display = Fraunces({
   subsets: ["latin"],
@@ -30,7 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <header className="site-header">
             <div className="site-header__inner">
               <Link href="/" className="brand">
-                <span className="brand__mark" aria-hidden />
+                <Image src={brandLogo} alt="HashKey logo" className="brand__logo" priority />
                 <span className="brand__text">
                   <span className="brand__name">ZK-RWA</span>
                   <span className="brand__tag">Allowlist</span>

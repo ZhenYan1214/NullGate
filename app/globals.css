@@ -135,6 +135,15 @@ a:hover {
   box-shadow: 0 0 22px rgba(95, 212, 192, 0.4);
   flex-shrink: 0;
 }
+.brand__logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 10px 28px -16px rgba(95, 212, 192, 0.7);
+  flex-shrink: 0;
+}
 .brand__text {
   display: flex;
   flex-direction: column;
@@ -508,7 +517,7 @@ textarea:focus-visible {
 }
 
 /* Hero (home) */
-.hero {
+.landing {
   padding-top: 8px;
 }
 .hero__title {
@@ -524,41 +533,11 @@ textarea:focus-visible {
   background-clip: text;
   color: transparent;
 }
-.hero .lead {
-  max-width: 640px;
-  margin-bottom: 8px;
-}
-
 .pill-row {
   display: flex;
   gap: 12px;
   margin-top: 28px;
   flex-wrap: wrap;
-}
-
-.feature-list {
-  margin: 0;
-  padding-left: 1.15rem;
-  color: var(--fg-soft);
-}
-.feature-list li {
-  margin-bottom: 12px;
-  padding-left: 4px;
-}
-.feature-list li strong {
-  color: var(--fg);
-  font-weight: 600;
-}
-
-.feature-grid {
-  display: grid;
-  gap: 20px;
-  margin-top: 40px;
-}
-@media (min-width: 720px) {
-  .feature-grid {
-    grid-template-columns: 1fr 1fr;
-  }
 }
 
 /* Stat tiles (issuer audit) */
@@ -787,6 +766,67 @@ pre.log {
   border-left: 3px solid var(--gold);
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   line-height: 1.55;
+}
+
+
+.simple-home {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.simple-home__hero {
+  text-align: left;
+}
+
+.simple-home .hero__title {
+  max-width: 640px;
+}
+
+.simple-home .lead {
+  max-width: 620px;
+}
+
+.simple-home__points {
+  margin-top: 28px;
+  display: grid;
+  gap: 12px;
+}
+@media (min-width: 860px) {
+  .simple-home__points {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.simple-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.02);
+  padding: 14px 14px 12px;
+}
+
+.simple-item h3 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.simple-item p {
+  margin: 0;
+  color: var(--fg-soft);
+  font-size: 14px;
+}
+
+.simple-home__flow {
+  margin-top: 18px;
+}
+
+.simple-flow {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--fg-soft);
+}
+
+.simple-flow li {
+  margin-bottom: 10px;
 }
 
 .empty-state {
