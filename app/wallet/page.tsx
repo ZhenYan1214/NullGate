@@ -70,11 +70,20 @@ export default function WalletPage() {
         args: [to as Address, parseUnits(amount, 18)],
       });
       append(`tx sent ${hash}`);
-      await publicClient().waitForTransactionReceipt({ hash });
-      append("confirmed ✓");
-      await refresh();
+      const receipt = await publicClient().waitForTransactionReceipt({ hash });
+      if (receipt.status === "reverted") {
+        append("ERROR: transaction reverted — recipient is likely not admitted for this token.");
+      } else {
+        append("confirmed ✓");
+        await refresh();
+      }
     } catch (e) {
-      append(`ERROR: ${(e as Error).message.slice(0, 180)}`);
+      const msg = (e as Error).message;
+      if (msg.includes("NotAdmitted")) {
+        append("ERROR: recipient is not admitted — transfer blocked by compliance hook.");
+      } else {
+        append(`ERROR: ${msg.slice(0, 180)}`);
+      }
     }
     setBusy(false);
   }
@@ -85,7 +94,7 @@ export default function WalletPage() {
         <p className="page-header__eyebrow">Holder · Wallet</p>
         <h1>My wallet</h1>
         <p className="page-header__desc">
-          View your compliance status and move HKGB30. Transfers only succeed when both parties
+          View your compliance status and move ZKCB. Transfers only succeed when both parties
           are admitted for this token.
         </p>
       </header>

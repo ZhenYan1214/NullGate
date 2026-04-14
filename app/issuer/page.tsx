@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
-import { PRIVATE_RWA_ADDRESS, COMPLIANCE_GATE_ADDRESS } from "@/lib/chain/config";
+import { PRIVATE_RWA_ADDRESS, COMPLIANCE_GATE_ADDRESS, MOCK_KYC_SBT_ADDRESS } from "@/lib/chain/config";
 import { publicClient } from "@/lib/chain/browserClient";
-import { COMPLIANCE_GATE_ABI, PRIVATE_RWA_ABI } from "@/lib/chain/abi";
+import { COMPLIANCE_GATE_ABI, PRIVATE_RWA_ABI, MOCK_KYC_SBT_ABI } from "@/lib/chain/abi";
 
 type GroupState = {
   members: string[];
@@ -22,6 +22,9 @@ export default function IssuerPage() {
 
   const [onChainRoot, setOnChainRoot] = useState<string | null>(null);
   const [totalSupply, setTotalSupply] = useState<string | null>(null);
+  const [kycEnabled, setKycEnabled] = useState<boolean>(false);
+  const [kycAddress, setKycAddress] = useState("");
+  const [kycAddressStatus, setKycAddressStatus] = useState<boolean | null>(null);
 
   function append(line: string) {
     setLog((l) => [...l, `[${new Date().toLocaleTimeString()}] ${line}`]);
@@ -36,7 +39,7 @@ export default function IssuerPage() {
   async function refreshChainStats() {
     try {
       const pc = publicClient();
-      const [root, supply] = await Promise.all([
+      const [root, supply, kycOn] = await Promise.all([
         pc.readContract({
           address: COMPLIANCE_GATE_ADDRESS,
           abi: COMPLIANCE_GATE_ABI,
@@ -47,12 +50,71 @@ export default function IssuerPage() {
           abi: PRIVATE_RWA_ABI,
           functionName: "totalSupply",
         }),
+        pc.readContract({
+          address: COMPLIANCE_GATE_ADDRESS,
+          abi: COMPLIANCE_GATE_ABI,
+          functionName: "kycEnabled",
+        }),
       ]);
       setOnChainRoot((root as bigint).toString());
       setTotalSupply((Number(supply as bigint) / 1e18).toLocaleString());
+      setKycEnabled(kycOn as boolean);
     } catch {
       // Contracts not deployed yet — that's fine
     }
+  }
+
+  async function checkKycStatus(address: string) {
+    if (!address.trim()) return;
+    try {
+      const pc = publicClient();
+      const [isHuman] = await pc.readContract({
+        address: MOCK_KYC_SBT_ADDRESS,
+        abi: MOCK_KYC_SBT_ABI,
+        functionName: "isHuman",
+        args: [address.trim() as `0x${string}`],
+      }) as [boolean, number];
+      setKycAddressStatus(isHuman);
+    } catch {
+      setKycAddressStatus(null);
+    }
+  }
+
+  async function toggleKyc() {
+    setBusy(true);
+    try {
+      const r = await fetch("/api/issuer/toggle-kyc", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ enabled: !kycEnabled }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      setKycEnabled(j.kycEnabled);
+      append(`KYC verification ${j.kycEnabled ? "ENABLED" : "DISABLED"} — tx ${j.txHash.slice(0, 14)}…`);
+    } catch (e) {
+      append(`ERROR: ${(e as Error).message}`);
+    }
+    setBusy(false);
+  }
+
+  async function setKycApproval(approved: boolean) {
+    if (!kycAddress.trim()) return;
+    setBusy(true);
+    try {
+      const r = await fetch("/api/issuer/approve-kyc", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ address: kycAddress.trim(), approved }),
+      });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      append(`${approved ? "Approved" : "Revoked"} KYC for ${kycAddress.slice(0, 10)}… — tx ${j.txHash.slice(0, 14)}…`);
+      await checkKycStatus(kycAddress);
+    } catch (e) {
+      append(`ERROR: ${(e as Error).message}`);
+    }
+    setBusy(false);
   }
 
   useEffect(() => {
@@ -134,7 +196,7 @@ export default function IssuerPage() {
       });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error);
-      append(`minted ${mintAmount} HKGB30 to ${mintTo.slice(0, 10)}… — tx ${j.txHash.slice(0, 14)}…`);
+      append(`minted ${mintAmount} ZKCB to ${mintTo.slice(0, 10)}… — tx ${j.txHash.slice(0, 14)}…`);
       await refreshChainStats();
     } catch (e) {
       append(`ERROR: ${(e as Error).message}`);
@@ -151,7 +213,7 @@ export default function IssuerPage() {
     },
     {
       label: "Total supply",
-      value: totalSupply ? `${totalSupply} HKGB30` : "—",
+      value: totalSupply ? `${totalSupply} ZKCB` : "—",
       sub: "public",
     },
     {
@@ -258,6 +320,75 @@ export default function IssuerPage() {
           </button>
         </div>
       </div>
+
+      {/* ── HashKey KYC Gate (Demo) ──────────────────────────────────────────── */}
+      <div className="card card--accent">
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 4 }}>
+          <h2 style={{ margin: 0 }}>HashKey KYC Gate</h2>
+          <span className="badge" style={{ background: "var(--gold-muted)", color: "var(--gold)", flexShrink: 0, marginTop: 2 }}>
+            ⚗ Demo only
+          </span>
+        </div>
+        <p className="card__sub">
+          In production this uses real HashKey KYC SBT. Here you can simulate approval/revocation directly for demo purposes.
+        </p>
+
+        {/* Status + toggle */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
+          <span
+            className="badge"
+            style={{
+              background: kycEnabled ? "var(--accent)" : "rgba(255,255,255,0.08)",
+              color: kycEnabled ? "var(--accent-fg)" : "var(--fg-soft)",
+              fontSize: 12,
+            }}
+          >
+            {kycEnabled ? "✓ KYC Enabled" : "KYC Disabled"}
+          </span>
+          <button type="button" onClick={toggleKyc} disabled={busy} style={{ minHeight: 36, padding: "0 16px", fontSize: 13 }}>
+            {kycEnabled ? "Disable" : "Enable"} KYC check
+          </button>
+          {!kycEnabled && (
+            <span style={{ fontSize: 12, color: "var(--muted)" }}>
+              — <code>admit()</code> skips KYC in demo mode
+            </span>
+          )}
+        </div>
+
+        {/* Mock KYC approval */}
+        <label className="field-label" htmlFor="kyc-address">
+          Simulate KYC for wallet
+        </label>
+        <input
+          id="kyc-address"
+          value={kycAddress}
+          onChange={(e) => {
+            setKycAddress(e.target.value);
+            setKycAddressStatus(null);
+          }}
+          onBlur={() => checkKycStatus(kycAddress)}
+          placeholder="0x…"
+        />
+        {kycAddressStatus !== null && (
+          <p style={{ marginTop: 6, fontSize: 13, color: kycAddressStatus ? "var(--accent)" : "var(--fg-soft)" }}>
+            {kycAddressStatus ? "✓ KYC approved" : "✗ No KYC SBT"}
+          </p>
+        )}
+        <div className="btn-row" style={{ marginTop: 12 }}>
+          <button type="button" onClick={() => setKycApproval(true)} disabled={busy || !kycAddress.trim()}>
+            Approve KYC
+          </button>
+          <button
+            type="button"
+            onClick={() => setKycApproval(false)}
+            disabled={busy || !kycAddress.trim()}
+            style={{ background: "var(--fg-soft)" }}
+          >
+            Revoke KYC
+          </button>
+        </div>
+      </div>
+      {/* ────────────────────────────────────────────────────────────────────── */}
 
       <div className="card">
         <h2>Mint PrivateRWA</h2>

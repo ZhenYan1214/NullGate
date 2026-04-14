@@ -122,11 +122,16 @@ export async function markRootPublished(root: string): Promise<void> {
 export async function merkleProofFor(commitment: string) {
   const file = await readStore();
   const group = toGroup(file.members);
-  const index = file.members.indexOf(commitment);
-  if (index === -1) throw new Error("commitment not in group");
-  const proof = group.generateMerkleProof(index);
+  const leafIndex = file.members.indexOf(commitment);
+  if (leafIndex === -1) throw new Error("commitment not in group");
+  const proof = group.generateMerkleProof(leafIndex);
+  // proof.index is the LeanIMT path index (bit-encoded left/right turns),
+  // which differs from the leaf's array position when some sibling slots are
+  // absent (e.g. the last leaf in an odd-sized tree). The ZK circuit uses
+  // this path index to reconstruct the Merkle root — passing the raw array
+  // position produces an incorrect root and an InvalidProof revert.
   return {
-    index,
+    index: proof.index,
     root: proof.root.toString(),
     siblings: proof.siblings.map((s) => s.toString()),
     leaf: proof.leaf.toString(),

@@ -20,9 +20,12 @@ contract PrivateRWA is ERC20 {
         _;
     }
 
-    constructor(string memory name_, string memory symbol_, address gateAddr, address issuer_)
-        ERC20(name_, symbol_)
-    {
+    constructor(
+        string memory name_,
+        string memory symbol_,
+        address gateAddr,
+        address issuer_
+    ) ERC20(name_, symbol_) {
         gate = ComplianceGate(gateAddr);
         issuer = issuer_;
     }
@@ -35,7 +38,11 @@ contract PrivateRWA is ERC20 {
         _burn(msg.sender, amount);
     }
 
-    function _update(address from, address to, uint256 value) internal override {
+    function _update(
+        address from,
+        address to,
+        uint256 value
+    ) internal override {
         // Mints skip the sender check; burns skip the recipient check.
         if (from != address(0) && !gate.isAdmitted(address(this), from)) {
             revert NotAdmitted(from);

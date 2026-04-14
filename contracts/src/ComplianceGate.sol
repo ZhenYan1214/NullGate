@@ -1,7 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-import {ISemaphoreVerifier} from "@semaphore-protocol/contracts/interfaces/ISemaphoreVerifier.sol";
+import {
+    ISemaphoreVerifier
+} from "@semaphore-protocol/contracts/interfaces/ISemaphoreVerifier.sol";
+
+/// @dev Minimal interface shared by HashKey KYC SBT (production) and MockKycSBT (demo).
+///      Both contracts expose exactly this function signature.
+interface IKycSBT {
+    function isHuman(address account) external view returns (bool, uint8);
+}
 
 /// @title ComplianceGate
 /// @notice Holds a private issuer allowlist as a Semaphore Merkle root. Holders self-admit
@@ -15,6 +23,8 @@ contract ComplianceGate {
     error TokenNotRegistered();
     error TokenAlreadyRegistered();
     error DepthOutOfRange();
+    /// @notice Raised when kycEnabled = true and the caller has no valid HashKey KYC SBT.
+    error NotKYCVerified(address who);
 
     uint256 private constant ROOT_HISTORY_SIZE = 16;
     uint256 private constant MIN_DEPTH = 1;
@@ -22,6 +32,14 @@ contract ComplianceGate {
 
     ISemaphoreVerifier public immutable verifier;
     address public immutable issuer;
+
+    /// @notice KYC SBT contract — MockKycSBT for demo, real HashKey KYC SBT for production.
+    IKycSBT public immutable kycSbt;
+
+    /// @notice When true, admit() requires BOTH a valid ZK proof AND a HashKey KYC SBT.
+    ///         Defaults to false so the demo works without real KYC credentials.
+    ///         Toggle via setKycEnabled() from the issuer dashboard.
+    bool public kycEnabled;
 
     uint256 public currentRoot;
     uint256[ROOT_HISTORY_SIZE] public rootHistory;
@@ -34,16 +52,23 @@ contract ComplianceGate {
 
     event RootUpdated(uint256 indexed newRoot);
     event TokenRegistered(address indexed token);
-    event Admitted(address indexed token, address indexed holder, uint256 nullifier);
+    event Admitted(
+        address indexed token,
+        address indexed holder,
+        uint256 nullifier
+    );
+    event KycToggled(bool enabled);
 
     modifier onlyIssuer() {
         if (msg.sender != issuer) revert NotIssuer();
         _;
     }
 
-    constructor(address _verifier, address _issuer) {
+    constructor(address _verifier, address _issuer, address _kycSbt) {
         verifier = ISemaphoreVerifier(_verifier);
         issuer = _issuer;
+        kycSbt = IKycSBT(_kycSbt);
+        // kycEnabled defaults to false — demo-safe out of the box
     }
 
     function updateRoot(uint256 newRoot) external onlyIssuer {
@@ -58,6 +83,14 @@ contract ComplianceGate {
         if (registeredToken[token]) revert TokenAlreadyRegistered();
         registeredToken[token] = true;
         emit TokenRegistered(token);
+    }
+
+    /// @notice Enable or disable HashKey KYC verification for admit().
+    ///         false (default) → only ZK group proof required       [demo mode]
+    ///         true            → ZK proof + HashKey KYC SBT required [production mode]
+    function setKycEnabled(bool _enabled) external onlyIssuer {
+        kycEnabled = _enabled;
+        emit KycToggled(_enabled);
     }
 
     /// @notice Self-admit msg.sender to `token`'s allowlist by proving membership in the
@@ -79,6 +112,19 @@ contract ComplianceGate {
         if (!knownRoot[root]) revert UnknownRoot();
         if (usedNullifier[nullifier]) revert NullifierReused();
 
+        // ── HashKey KYC Gate ─────────────────────────────────────────────────────
+        // DEMO NOTE: kycEnabled is false by default so the demo can run without
+        // real HashKey KYC credentials. The issuer dashboard has a toggle to flip
+        // this on — showing the KYC-fail revert — then MockKycSBT.approve() lets
+        // you simulate an approved investor passing both checks.
+        // In production this flag would always be true, pointing at the real
+        // HashKey KYC SBT contract instead of the mock.
+        if (kycEnabled) {
+            (bool isHuman, ) = kycSbt.isHuman(msg.sender);
+            if (!isHuman) revert NotKYCVerified(msg.sender);
+        }
+        // ─────────────────────────────────────────────────────────────────────────
+
         // message = caller address (binds the proof to this specific on-chain identity)
         // scope   = token address (isolates nullifiers across tokens so the same group
         //           member can admit to multiple tokens)
@@ -99,7 +145,10 @@ contract ComplianceGate {
         emit Admitted(token, msg.sender, nullifier);
     }
 
-    function isAdmitted(address token, address holder) external view returns (bool) {
+    function isAdmitted(
+        address token,
+        address holder
+    ) external view returns (bool) {
         return admitted[token][holder];
     }
 

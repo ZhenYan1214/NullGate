@@ -125,11 +125,29 @@ export default function AdmitPage() {
         ],
       });
       append(`tx sent ${hash}`);
-      await publicClient().waitForTransactionReceipt({ hash });
+      const receipt = await publicClient().waitForTransactionReceipt({ hash });
+      if (receipt.status === "reverted") {
+        // The revert reason isn't always decodable from the receipt on HashKey testnet,
+        // so surface a helpful message based on the most likely causes.
+        append("ERROR: transaction reverted on-chain.");
+        setErr(
+          "Transaction reverted. Possible reasons: KYC not approved (ask issuer to approve your address), " +
+          "nullifier already used (this identity already admitted this wallet), or root not published."
+        );
+        setPhase("error");
+        return;
+      }
       append("confirmed. you are now admitted to this token.");
       setPhase("done");
     } catch (e) {
-      setErr((e as Error).message);
+      const msg = (e as Error).message;
+      if (msg.includes("NotKYCVerified")) {
+        setErr("KYC verification failed — your wallet does not have a HashKey KYC SBT. Ask the issuer to approve your address first.");
+      } else if (msg.includes("NullifierReused")) {
+        setErr("Already admitted — this identity has already been used to admit this wallet.");
+      } else {
+        setErr(msg);
+      }
       setPhase("error");
     }
   }

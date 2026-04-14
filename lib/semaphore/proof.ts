@@ -41,7 +41,12 @@ export async function generateAdmissionProof(
   const message = BigInt(holderAddress);
   const scope = BigInt(tokenAddress);
 
-  const proof = await generateProof(identity, merkleProof, message, scope);
+  // Force depth-20 artifacts — the PSE CDN reliably hosts depth-20 circuits.
+  // The Semaphore circuit is variable-depth: it receives the *actual* siblings
+  // via merkleProofLength, so a depth-1 tree (2 members) still produces the
+  // correct root. Without this override, small groups (depth < ~8) can trigger
+  // an "Assert Failed in Num2Bits" because the CDN may not host those artifacts.
+  const proof = await generateProof(identity, merkleProof, message, scope, 20);
 
   return {
     root: proof.merkleTreeRoot.toString(),

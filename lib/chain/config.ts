@@ -25,3 +25,4 @@ export const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL ?? "https://testnet.hsk.x
 export const COMPLIANCE_GATE_ADDRESS = (process.env.NEXT_PUBLIC_COMPLIANCE_GATE_ADDRESS ?? "0x") as `0x${string}`;
 export const PRIVATE_RWA_ADDRESS = (process.env.NEXT_PUBLIC_PRIVATE_RWA_ADDRESS ?? "0x") as `0x${string}`;
 export const ISSUER_ADDRESS = (process.env.NEXT_PUBLIC_ISSUER_ADDRESS ?? "0x") as `0x${string}`;
+export const MOCK_KYC_SBT_ADDRESS = (process.env.NEXT_PUBLIC_MOCK_KYC_SBT_ADDRESS ?? "0x") as `0x${string}`;

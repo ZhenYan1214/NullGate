@@ -82,10 +82,10 @@ export default function ComparePage() {
             <br />
             <div className="code-accent">// Admitted set (public by necessity, but unlinkable):</div>
             <div>
-              admitted[HKGB30][<span className="code-addr">0xf39F…</span>] = true
+              admitted[ZKCB][<span className="code-addr">0xf39F…</span>] = true
             </div>
             <div>
-              admitted[HKGB30][<span className="code-addr">0x742d…</span>] = true
+              admitted[ZKCB][<span className="code-addr">0x742d…</span>] = true
             </div>
             <div className="code-muted">// ↑ Which commitment = which address? Unknown.</div>
             <div className="code-muted">// ↑ Who HASN&apos;T admitted yet? Unknown.</div>

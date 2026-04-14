@@ -66,12 +66,63 @@ export const COMPLIANCE_GATE_ABI = [
       { name: "nullifier", type: "uint256", indexed: false },
     ],
   },
+  {
+    type: "function",
+    name: "kycEnabled",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "setKycEnabled",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "_enabled", type: "bool" }],
+    outputs: [],
+  },
+  {
+    type: "event",
+    name: "KycToggled",
+    inputs: [{ name: "enabled", type: "bool", indexed: false }],
+  },
   { type: "error", name: "NotIssuer", inputs: [] },
   { type: "error", name: "UnknownRoot", inputs: [] },
   { type: "error", name: "NullifierReused", inputs: [] },
   { type: "error", name: "InvalidProof", inputs: [] },
   { type: "error", name: "TokenNotRegistered", inputs: [] },
   { type: "error", name: "DepthOutOfRange", inputs: [] },
+  { type: "error", name: "NotKYCVerified", inputs: [{ name: "who", type: "address" }] },
+] as const;
+
+export const MOCK_KYC_SBT_ABI = [
+  {
+    type: "function",
+    name: "approved",
+    stateMutability: "view",
+    inputs: [{ name: "user", type: "address" }],
+    outputs: [{ type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "approve",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "user", type: "address" }],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "revoke",
+    stateMutability: "nonpayable",
+    inputs: [{ name: "user", type: "address" }],
+    outputs: [],
+  },
+  {
+    type: "function",
+    name: "isHuman",
+    stateMutability: "view",
+    inputs: [{ name: "user", type: "address" }],
+    outputs: [{ type: "bool" }, { type: "uint8" }],
+  },
 ] as const;
 
 export const PRIVATE_RWA_ABI = [
