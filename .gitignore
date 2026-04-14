@@ -5,6 +5,7 @@ dist/
 .env
 .env.local
 .env.*.local
+.claude/
 
 # Foundry
 contracts/out/
@@ -14,6 +15,4 @@ contracts/broadcast/
 scripts/out/
 
 # Media and Documents
-*.pdf
-# Exclude loose PNGs at root but keep the asset/ directory
-/*.png
+
