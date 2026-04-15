@@ -150,6 +150,7 @@ Every ERC-20 transfer triggers the `_update` hook in `PrivateRWA.sol`. Both send
 | --- | --- | --- |
 | Full allowlist of identity commitments | **Private** | Stored off-chain in issuer backend only |
 | Which commitment maps to which address | **Private** | ZK proof reveals nothing beyond membership |
+| Cross-token holder correlation | **Private** | Each token has an independent nullifier scope (`scope = hash(tokenAddress)`) — the same investor admitting to Token A and Token B produces two unlinkable nullifiers |
 | Set of admitted addresses | Public | Required for transfer hook |
 | Individual token holdings | Public | Standard ERC-20 |
 
